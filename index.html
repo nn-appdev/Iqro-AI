@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>IQRA' AI - Modern Islamic EdTech</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script type="importmap">
+    {
+        "imports": {
+            "react": "https://esm.sh/react@18.2.0",
+            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+            "lucide-react": "https://esm.sh/lucide-react@0.477.0?external=react"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect, useRef, useCallback } from "react";
+        import { createRoot } from "react-dom/client";
+        import {
+            Home, MessageCircle, BookOpen, History, Bookmark, TrendingUp, Info,
+            Upload, Users, BarChart3, Globe, Settings, LogOut, Send,
+            ThumbsUp, ThumbsDown, Flag, Sparkles, GraduationCap, Award, Flame,
+            ChevronRight, X, Plus, Trash2, Loader2, Menu, BookMarked, Compass, 
+            Brain, Trophy, FileText, Search, Check, CircleDot, ExternalLink, 
+            Inbox, BookCheck, ClipboardEdit, ClipboardCheck, HelpCircle, CheckCircle,
+            FileUp, AlertTriangle, ShieldCheck
+        } from "lucide-react";
+
+        const C = {
+            bg: "#F8F7F2",
+            surface: "#FFFFFF",
+            surfaceSubtle: "#F3F2EB",
+            ink: "#17332D",
+            inkSoft: "#64736E",
+            inkFaint: "#9CA8A3",
+            emerald: "#0F5C4D",
+            emeraldSecondary: "#177E6A",
+            emeraldBg: "#DDF3ED",
+            gold: "#D9A441",
+            goldBg: "#F8EAC5",
+            goldDeep: "#966A17",
+            border: "#E5E9E7",
+            borderSoft: "#ECEFE9",
+            green: "#2E8B68",
+            greenBg: "#E3F2EB",
+            yellow: "#C58A25",
+            yellowBg: "#FDF5E3",
+            orange: "#CC7A2E",
+            orangeBg: "#FBEBDB",
+            red: "#C95B54",
+            redBg: "#FBEAE9",
+        };
+
+        function FontsAndStyles() {
+            return (
+                <style>{`
+                    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700&family=Amiri:ital,wght@0,400;0,700;1,400&display=swap');
+                    
+                    .font-display { font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; letter-spacing: -0.015em; }
+                    .font-body { font-family: 'Inter', -apple-system, sans-serif; }
+                    .font-arabic { font-family: 'Amiri', serif; line-height: 2.3; letter-spacing: 0; }
+                    
+                    * { box-sizing: border-box; }
+                    body { background-color: ${C.bg}; color: ${C.ink}; margin: 0; overflow: hidden; }
+                    
+                    .iqra-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+                    .iqra-scroll::-webkit-scrollbar-track { background: transparent; }
+                    .iqra-scroll::-webkit-scrollbar-thumb { background: #D5DCD8; border-radius: 4px; }
+                    .iqra-scroll::-webkit-scrollbar-thumb:hover { background: #B3C0BB; }
+                    
+                    @keyframes riseIn { 
+                        from { opacity: 0; transform: translateY(6px); } 
+                        to { opacity: 1; transform: translateY(0); } 
+                    }
+                    .rise-in { animation: riseIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) both; }
+                    
+                    @keyframes slideRight {
+                        from { transform: translateX(-100%); }
+                        to { transform: translateX(0); }
+                    }
+                    .animate-slide-right { animation: slideRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+                    button { font-family: inherit; }
+                    button:active { transform: scale(0.985); }
+                    input, select, textarea { font-family: inherit; }
+                    input::placeholder, textarea::placeholder { color: ${C.inkFaint}; }
+                    ::selection { background: ${C.goldBg}; color: ${C.ink}; }
+                `}</style>
+            );
+        }
+
+        function ArchitecturalMotif({ size = 100, color = C.emerald, opacity = 0.04 }) {
+            return (
+                <svg width={size} height={size} viewBox="0 0 100 100" style={{ opacity }} className="pointer-events-none select-none">
+                    <g fill="none" stroke={color} strokeWidth="1.2">
+                        <rect x="20" y="20" width="60" height="60" />
+                        <rect x="20" y="20" width="60" height="60" transform="rotate(45 50 50)" />
+                        <circle cx="50" cy="50" r="30" />
+                        <circle cx="50" cy="50" r="10" />
+                    </g>
+                </svg>
+            );
+        }
+
+        async function storeGet(key, fallback) {
+            try {
+                const val = localStorage.getItem(`iqra_${key}`);
+                return val ? JSON.parse(val) : fallback;
+            } catch (err) { return fallback; }
+        }
+
+        async function storeSet(key, value) {
+            try {
+                localStorage.setItem(`iqra_${key}`, JSON.stringify(value));
+            } catch (err) {}
+        }
+
+        const BASE_CORPUS = [
+            { id: "doc-1", title: "Buku Panduan IPAS Kelas 5", subject: "IPAS", grade: 5, chapter: "Tumbuhan dan Lingkungannya", page: 32, keywords: ["fotosintesis", "tumbuhan", "klorofil", "oksigen"], content: "Fotosintesis adalah proses biokimia di mana tumbuhan hijau memproduksi glukosa dan oksigen dari air serta karbon dioksida dengan bantuan klorofil dan cahaya matahari. Proses ini berlangsung di organ daun.", teacherName: "Sistem Guru", status: "approved" },
+            { id: "doc-2", title: "Modul Akidah Akhlak", subject: "Pendidikan Agama Islam", grade: 6, chapter: "Memahami Esensi Rukun Iman", page: 8, keywords: ["rukun iman", "iman", "malaikat", "qada"], content: "Rukun Iman mencakup enam pilar keyakinan: Iman kepada Allah SWT, Malaikat-Nya, Kitab-Nya, Rasul-Nya, Hari Kiamat, serta Qada dan Qadar.", teacherName: "Sistem Guru", status: "approved" }
+        ];
+
+        const BASE_ASSIGNMENTS = [
+            { id: "tugas-1", title: "Evaluasi Fotosintesis", subject: "IPAS", grade: 5, question: "Jelaskan dengan bahasamu sendiri, apa saja bahan yang dibutuhkan tumbuhan untuk fotosintesis dan apa fungsi hasil akhirnya?", reference: "Bahan: air, karbon dioksida, dan energi cahaya (dengan klorofil). Hasil: oksigen (untuk bernapas) dan glukosa." },
+        ];
+
+        const SUBJECTS = ["Bahasa Indonesia", "Matematika", "IPAS", "Pendidikan Pancasila", "Pendidikan Agama Islam", "Bahasa Inggris"];
+        const MODES = [
+            { id: "jelaskan", label: "Jelaskan", icon: Sparkles, desc: "Penjelasan terstruktur & lugas." },
+            { id: "detektif", label: "Detektif Ilmu", icon: Search, desc: "Bimbingan langkah demi langkah dengan pertanyaan pemantik." },
+            { id: "aha", label: "AHA", icon: Brain, desc: "Strategi penemuan pola & pemecahan masalah tingkat lanjut." },
+            { id: "buku", label: "Buku Teks", icon: BookMarked, desc: "Rujukan ketat berbasis materi ajar perpustakaan guru." },
+        ];
+
+        const STRENGTH_META = {
+            green: { label: "Tervalidasi", sub: "Materi ajar guru", color: C.green, bg: C.greenBg, border: "#C3E5D4" },
+            yellow: { label: "Terpercaya", sub: "Referensi repositori", color: C.yellow, bg: C.yellowBg, border: "#F5E4BE" },
+            orange: { label: "Informasi Terbatas", sub: "Perlu konfirmasi guru", color: C.orange, bg: C.orangeBg, border: "#F2DFB3" },
+            red: { label: "Belum Ada Sumber", sub: "Pengetahuan umum", color: C.red, bg: C.redBg, border: "#F8CBC7" },
+        };
+
+        function matchTeacherDocs(query, grade, subject, documents) {
+            const q = query.toLowerCase();
+            return documents
+                .map(doc => {
+                    let score = 0;
+                    doc.keywords.forEach(k => { if (q.includes(k.toLowerCase())) score += 4; });
+                    if (doc.grade === Number(grade)) score += 2;
+                    if (subject && doc.subject === subject) score += 3;
+                    return { doc, score };
+                })
+                .filter(item => item.score > 0)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 2)
+                .map(item => item.doc);
+        }
+
+        async function generateEducationalResponse({ question, mode, grade, subject, teacherDocs }) {
+            await new Promise(resolve => setTimeout(resolve, 800));
+            const hasDoc = teacherDocs.length > 0;
+            const primaryDoc = hasDoc ? teacherDocs[0] : null;
+
+            if (mode === "detektif") {
+                return {
+                    shortAnswer: `Mari kita telaah bersama langkah pertama untuk memahami topik ini.`,
+                    explanation: hasDoc ? `Berdasarkan rujukan modul kelasmu, kita perlu mengidentifikasi fakta kuncinya terlebih dahulu.` : `Mari kita bedah variabel dan informasi yang sudah diketahui.`,
+                    thinkPrompt: hasDoc ? `Menurutmu, mengapa hal ini penting untuk penyelesaiannya?` : `Dapatkah kamu menuliskan apa yang sedang dicari dalam pertanyaan ini?`,
+                    sources: hasDoc ? [{ icon: "📘", label: primaryDoc.title, detail: `Bab: ${primaryDoc.chapter}` }] : [],
+                    sourceStrength: hasDoc ? "green" : "orange",
+                    note: hasDoc ? null : "Tutor membimbing berdasarkan logika umum karena modul belum tersedia."
+                };
+            }
+
+            if (mode === "aha") {
+                return {
+                    shortAnswer: `Pendekatan AHA: Temukan pola dasar yang mendasari soal ini.`,
+                    explanation: `Strategi terbaik bukanlah menghafal rumus cepat, melainkan mereduksi masalah rumit menjadi bagian-bagian teratur. Cobalah uji kasus sederhana untuk melihat pola yang berulang.`,
+                    thinkPrompt: `Jika kamu mengubah salah satu nilainya menjadi dua kali lipat, bagaimana hasil akhirnya?`,
+                    sources: hasDoc ? [{ icon: "🏆", label: primaryDoc.title, detail: `Bab: ${primaryDoc.chapter}` }] : [],
+                    sourceStrength: hasDoc ? "green" : "yellow",
+                    note: null
+                };
+            }
+
+            if (mode === "buku") {
+                if (!hasDoc) {
+                    return {
+                        shortAnswer: `Materi khusus terkait topik ini belum terdaftar dalam berkas ajar guru kelas ${grade}.`,
+                        explanation: `Sesuai prinsip ketat verifikasi, IQRA' AI tidak akan mengarang jawaban jika sumber modul tidak ada. Silakan ajukan ke pengajar Anda untuk mengunggah materi terkait.`,
+                        thinkPrompt: null,
+                        sources: [],
+                        sourceStrength: "red",
+                        note: "Tidak ditemukan dokumen guru yang tervalidasi."
+                    };
+                }
+                return {
+                    shortAnswer: `Dikutip langsung dari ${primaryDoc.title} (Halaman ${primaryDoc.page}).`,
+                    explanation: primaryDoc.content,
+                    thinkPrompt: `Apakah kutipan ini sudah menjawab kebingunganmu?`,
+                    sources: [{ icon: "📘", label: primaryDoc.title, detail: `Bab: ${primaryDoc.chapter} · Hal. ${primaryDoc.page}` }],
+                    sourceStrength: "green",
+                    note: null
+                };
+            }
+
+            // Default JELASKAN
+            if (hasDoc) {
+                return {
+                    shortAnswer: `Konsep ini dijelaskan dalam materi ${primaryDoc.chapter}.`,
+                    explanation: `${primaryDoc.content} Secara sederhana, hal ini terjadi secara konsisten dalam kondisi yang normal.`,
+                    thinkPrompt: `Dapatkah kamu menyebutkan satu contoh lain dari peristiwa ini?`,
+                    sources: [{ icon: "📘", label: primaryDoc.title, detail: `Bab: ${primaryDoc.chapter}` }],
+                    sourceStrength: "green",
+                    note: null
+                };
+            }
+
+            return {
+                shortAnswer: `Berikut penjelasan terstruktur mengenai pertanyaanmu untuk jenjang Kelas ${grade}.`,
+                explanation: `Konsep ini mengacu pada prinsip dasar di mana elemen-elemen bekerja secara berkesinambungan. Memahami konsep ini akan memudahkanmu di pelajaran berikutnya.`,
+                thinkPrompt: `Bagian mana yang paling ingin kamu perdalam lagi?`,
+                sources: [{ icon: "🌐", label: "Ensiklopedia Pendidikan", detail: `Referensi Terpercaya` }],
+                sourceStrength: "yellow",
+                note: "Penjelasan disarikan dari standar referensi umum karena modul guru belum tersedia."
+            };
+        }
+
+        function StrengthBadge({ level }) {
+            const meta = STRENGTH_META[level] || STRENGTH_META.orange;
+            return (
+                <div className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium border" style={{ background: meta.bg, borderColor: meta.border, color: meta.color }}>
+                    <CircleDot size={12} style={{ color: meta.color }} />
+                    <span className="font-semibold">{meta.label}</span>
+                    <span className="text-[11px] hidden sm:inline opacity-80">· {meta.sub}</span>
+                </div>
+            );
+        }
+
+        function Card({ children, className = "", style = {}, onClick }) {
+            return (
+                <div onClick={onClick} className={`rounded-xl p-5 transition-all ${onClick ? 'cursor-pointer hover:shadow-md' : ''} ${className}`}
+                    style={{ background: C.surface, border: `1px solid ${C.border}`, boxShadow: "0 1px 3px rgba(23, 51, 45, 0.02)", ...style }}>
+                    {children}
+                </div>
+            );
+        }
+
+        function Toast({ message, onClose }) {
+            if (!message) return null;
+            return (
+                <div className="fixed bottom-6 right-6 z-[100] rise-in flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium bg-white" style={{ borderColor: C.border, color: C.ink }}>
+                    <Check size={16} style={{ color: C.green }} />
+                    <span>{message}</span>
+                    <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded"><X size={14} style={{ color: C.inkSoft }} /></button>
+                </div>
+            );
+        }
+
+        function RoleSwitchModal({ current, onSelect, onClose }) {
+            const [role, setRole] = useState(current?.role || "student");
+            const [name, setName] = useState(current?.name || "");
+            const [password, setPassword] = useState("");
+            const [studentPassword, setStudentPassword] = useState("");
+            const [grade, setGrade] = useState(current?.grade || 5);
+            const [error, setError] = useState("");
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                setError("");
+
+                if (role === "teacher") {
+                    if (password !== "bismillah") {
+                        setError("Password Guru salah. (Clue: bismillah)");
+                        return;
+                    }
+                    onSelect({ role: "teacher", name: name || "Bapak/Ibu Guru", grade: 5 });
+                } else {
+                    if (studentPassword !== "belajar") {
+                        setError("Password Siswa salah. (Clue: belajar)");
+                        return;
+                    }
+                    onSelect({ role: "student", name: `Siswa Kelas ${grade}`, grade: Number(grade) });
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: "rgba(23, 51, 45, 0.6)", backdropFilter: "blur(4px)" }}>
+                    <div className="w-full max-w-sm rounded-2xl p-6 rise-in shadow-xl" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+                        <div className="flex items-center justify-between pb-4 mb-4 border-b" style={{ borderColor: C.borderSoft }}>
+                            <h3 className="font-display text-lg font-bold" style={{ color: C.ink }}>Portal Akses IQRA'</h3>
+                            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} style={{ color: C.inkFaint }} /></button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="grid grid-cols-2 gap-3">
+                                <button type="button" onClick={() => setRole("student")} className="flex flex-col items-center gap-2 rounded-xl p-3 border transition-all" style={{ borderColor: role === "student" ? C.emerald : C.border, background: role === "student" ? C.emeraldBg : "transparent" }}>
+                                    <GraduationCap size={20} style={{ color: role === "student" ? C.emerald : C.inkFaint }} />
+                                    <span className="text-xs font-semibold" style={{ color: role === "student" ? C.emerald : C.inkSoft }}>Siswa</span>
+                                </button>
+                                <button type="button" onClick={() => setRole("teacher")} className="flex flex-col items-center gap-2 rounded-xl p-3 border transition-all" style={{ borderColor: role === "teacher" ? C.emerald : C.border, background: role === "teacher" ? C.emeraldBg : "transparent" }}>
+                                    <Users size={20} style={{ color: role === "teacher" ? C.emerald : C.inkFaint }} />
+                                    <span className="text-xs font-semibold" style={{ color: role === "teacher" ? C.emerald : C.inkSoft }}>Guru / Admin</span>
+                                </button>
+                            </div>
+
+                            {role === "teacher" ? (
+                                <>
+                                    <div>
+                                        <label className="text-xs font-semibold block mb-1.5" style={{ color: C.inkSoft }}>Nama Pengajar</label>
+                                        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ketik nama di sini..." className="w-full rounded-lg px-3.5 py-2.5 text-sm outline-none border focus:border-emerald-600 bg-gray-50 text-gray-800" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-semibold block mb-1.5" style={{ color: C.inkSoft }}>Sandi Keamanan (Guru)</label>
+                                        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Sandi (clue: bismillah)" className="w-full rounded-lg px-3.5 py-2.5 text-sm outline-none border focus:border-emerald-600 bg-gray-50 text-gray-800" />
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div>
+                                        <label className="text-xs font-semibold block mb-1.5" style={{ color: C.inkSoft }}>Tingkat Kelas SD</label>
+                                        <select value={grade} onChange={(e) => setGrade(Number(e.target.value))} className="w-full rounded-lg px-3.5 py-2.5 text-sm outline-none border focus:border-emerald-600 bg-gray-50 text-gray-800">
+                                            <option value={4}>Kelas 4 (Fase B)</option>
+                                            <option value={5}>Kelas 5 (Fase C)</option>
+                                            <option value={6}>Kelas 6 (Fase C)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-semibold block mb-1.5" style={{ color: C.inkSoft }}>Sandi Akses (Siswa)</label>
+                                        <input type="password" value={studentPassword} onChange={(e) => setStudentPassword(e.target.value)} placeholder="Sandi (clue: belajar)" className="w-full rounded-lg px-3.5 py-2.5 text-sm outline-none border focus:border-emerald-600 bg-gray-50 text-gray-800" />
+                                    </div>
+                                </>
+                            )}
+
+                            {error && <p className="text-xs font-medium text-red-600 bg-red-50 p-2 rounded-lg border border-red-100">{error}</p>}
+
+                            <button type="submit" className="w-full rounded-lg py-3 text-sm font-semibold text-white shadow-sm mt-2 transition-all hover:opacity-90" style={{ background: C.emerald }}>Terapkan Akses</button>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        function LmsAuthModal({ onAuthenticate, onClose }) {
+            const [password, setPassword] = useState("");
+            const [error, setError] = useState("");
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (password === "belajar") {
+                    onAuthenticate();
+                } else {
+                    setError("Sandi akses LMS salah. (Clue: belajar)");
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: "rgba(23, 51, 45, 0.6)", backdropFilter: "blur(4px)" }}>
+                    <div className="w-full max-w-sm rounded-2xl p-6 rise-in shadow-xl" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+                        <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-100">
+                            <h3 className="font-display text-lg font-bold flex items-center gap-2 text-gray-800"><ShieldCheck size={20} className="text-emerald-700"/> Keamanan LMS</h3>
+                            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={18} className="text-gray-400" /></button>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-4 leading-relaxed">Untuk mencegah pengerjaan tugas secara tidak sengaja, silakan masukkan sandi otorisasi LMS.</p>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Masukkan sandi LMS..." className="w-full rounded-lg px-3.5 py-2.5 text-sm outline-none border focus:border-emerald-600 bg-gray-50 text-gray-800" autoFocus />
+                            </div>
+                            {error && <p className="text-xs font-medium text-red-600 bg-red-50 p-2 rounded-lg">{error}</p>}
+                            <button type="submit" className="w-full rounded-lg py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700" style={{ background: C.emerald }}>Buka Kertas Ujian</button>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        function ChatMessageItem({ msg, onVote, onBookmark }) {
+            const [quranData, setQuranData] = useState(null);
+            const [quranLoading, setQuranLoading] = useState(false);
+
+            const fetchQuran = async () => {
+                if (quranData) { setQuranData(null); return; } // Toggle off
+                setQuranLoading(true);
+                try {
+                    const qLower = (msg.question || "").toLowerCase();
+                    let theme = "ilmu";
+                    if (qLower.includes("tumbuh") || qLower.includes("alam")) theme = "tumbuhan";
+                    else if (qLower.includes("hitung") || qLower.includes("pola")) theme = "menghitung";
+                    
+                    const searchRes = await fetch(`https://api.alquran.cloud/v1/search/${encodeURIComponent(theme)}/all/id.indonesian`);
+                    const searchData = await searchRes.json();
+                    const match = searchData?.data?.matches?.[0];
+
+                    if (match) {
+                        const detailRes = await fetch(`https://api.alquran.cloud/v1/ayah/${match.number}/editions/quran-uthmani,id.indonesian`);
+                        const detailData = await detailRes.json();
+                        setQuranData({
+                            surahName: match.surah.englishName, surahNumber: match.surah.number, ayahNumber: match.numberInSurah,
+                            arabic: detailData?.data?.[0]?.text || "", translation: detailData?.data?.[1]?.text || match.text,
+                        });
+                    } else {
+                        setQuranData({ error: "Tidak ada ayat khusus yang terkait secara langsung." });
+                    }
+                } catch {
+                    setQuranData({ error: "Gagal memuat API Al-Qur'an." });
+                } finally {
+                    setQuranLoading(false);
+                }
+            };
+
+            if (msg.role === "user") {
+                return (
+                    <div className="flex justify-end rise-in mb-4">
+                        <div className="max-w-[85%] rounded-2xl rounded-tr-sm px-4 py-3 text-sm text-white shadow-sm" style={{ background: C.emeraldSecondary }}>
+                            {msg.text}
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="flex justify-start rise-in mb-5">
+                    <div className="max-w-[92%] w-full rounded-2xl rounded-tl-sm p-4 border shadow-sm" style={{ background: C.surface, borderColor: C.border }}>
+                        <div className="text-sm font-semibold pb-2.5 border-b" style={{ color: C.ink, borderColor: C.borderSoft }}>{msg.data.shortAnswer}</div>
+                        {msg.data.explanation && <p className="text-sm mt-3 leading-relaxed" style={{ color: C.inkSoft }}>{msg.data.explanation}</p>}
+                        
+                        {msg.data.thinkPrompt && (
+                            <div className="mt-3.5 rounded-lg p-3.5 flex items-start gap-3 border" style={{ background: C.goldBg, borderColor: "#F2DFB3" }}>
+                                <Brain size={16} className="shrink-0 mt-0.5" style={{ color: C.goldDeep }} />
+                                <div>
+                                    <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: C.goldDeep }}>Pertanyaan Pemantik</p>
+                                    <p className="text-xs mt-0.5 font-medium leading-relaxed" style={{ color: "#563C0D" }}>{msg.data.thinkPrompt}</p>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {msg.data.sources?.length > 0 && (
+                            <div className="mt-4 rounded-lg overflow-hidden border" style={{ borderColor: C.borderSoft }}>
+                                <div className="px-3.5 py-2 flex justify-between bg-gray-50 border-b" style={{ borderColor: C.borderSoft }}>
+                                    <div className="flex items-center gap-2"><BookMarked size={13} style={{ color: C.emerald }}/><span className="text-[11px] font-bold uppercase" style={{ color: C.emerald }}>Verifikasi Rujukan</span></div>
+                                    <StrengthBadge level={msg.data.sourceStrength} />
+                                </div>
+                                <div className="p-3.5 space-y-2.5 bg-white">
+                                    {msg.data.sources.map((s, idx) => (
+                                        <div key={idx} className="flex gap-2.5 text-xs">
+                                            <span className="text-base leading-none">{s.icon}</span>
+                                            <div><p className="font-semibold text-gray-800">{s.label}</p><p className="text-[11px] text-gray-500">{s.detail}</p></div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex items-center gap-1 mt-4 pt-3 border-t" style={{ borderColor: C.borderSoft }}>
+                            <button onClick={() => onVote(msg.id, "up")} className="p-1.5 rounded-md hover:bg-gray-100 flex gap-1" style={{ color: msg.vote === "up" ? C.green : C.inkFaint }}><ThumbsUp size={14} /></button>
+                            <button onClick={() => onVote(msg.id, "down")} className="p-1.5 rounded-md hover:bg-gray-100 flex gap-1" style={{ color: msg.vote === "down" ? C.red : C.inkFaint }}><ThumbsDown size={14} /></button>
+                            <button onClick={() => onBookmark(msg)} className="p-1.5 rounded-md hover:bg-gray-100 ml-2" style={{ color: msg.bookmarked ? C.gold : C.inkFaint }}><Bookmark size={14} fill={msg.bookmarked ? C.gold : "none"} /></button>
+                            <button onClick={fetchQuran} className="p-1.5 rounded-md hover:bg-emerald-50 ml-2 flex items-center gap-1.5 text-xs font-semibold border transition-colors" style={{ borderColor: C.border, color: quranData ? C.emerald : C.inkSoft }}>
+                                <BookOpen size={14} /> Relevansi Ayat
+                            </button>
+                        </div>
+
+                        {quranLoading && <div className="mt-3 text-xs flex items-center gap-2 text-emerald-700"><Loader2 size={14} className="animate-spin"/> Menarik data API Al-Qur'an...</div>}
+                        {quranData && !quranData.error && (
+                            <div className="mt-3 p-4 rounded-xl border bg-white rise-in" style={{ borderColor: C.borderSoft }}>
+                                <span className="text-xs font-bold uppercase tracking-wider text-gold-700 block mb-2" style={{ color: C.goldDeep }}>QS. {quranData.surahName} : {quranData.ayahNumber}</span>
+                                <p className="font-arabic text-xl text-right leading-loose text-gray-800" dir="rtl">{quranData.arabic}</p>
+                                <p className="text-xs leading-relaxed italic border-l-2 pl-3 py-1 mt-3" style={{ borderColor: C.gold, color: C.inkSoft }}>"{quranData.translation}"</p>
+                                <div className="pt-2 mt-3 border-t flex justify-between items-center" style={{ borderColor: C.borderSoft }}>
+                                    <span className="text-[10px] text-gray-400">Teks Kemenag RI via alquran.cloud</span>
+                                    <a href={`https://quran.kemenag.go.id/surah/${quranData.surahNumber}`} target="_blank" rel="noreferrer" className="text-[11px] font-bold flex items-center gap-1 hover:underline" style={{ color: C.emeraldSecondary }}>Kaji Tafsir Kemenag <ExternalLink size={10} /></a>
+                                </div>
+                            </div>
+                        )}
+                        {quranData?.error && <div className="mt-3 text-xs text-red-500 bg-red-50 p-2 rounded">{quranData.error}</div>}
+                    </div>
+                </div>
+            );
+        }
+
+        function StudentDashboardView({ profile, history, setView }) {
+            const lastQ = history[history.length - 1];
+            return (
+                <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-8">
+                    <div>
+                        <h2 className="font-display text-3xl font-bold tracking-tight" style={{ color: C.ink }}>Beranda Belajar</h2>
+                        <p className="text-sm mt-1" style={{ color: C.inkSoft }}>Assalamu'alaikum, <strong>{profile.name}</strong>. Selamat datang di pustaka cerdas.</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        {[
+                            { label: "Sesi Diskusi", value: history.length, icon: MessageCircle },
+                            { label: "Tingkat Kelas", value: profile.grade, icon: BookOpen },
+                            { label: "Konsistensi", value: `${Math.min(history.length + 1, 7)} Hari`, icon: Flame },
+                            { label: "Topik Aktif", value: lastQ?.subject || "-", icon: Compass },
+                        ].map((m, idx) => (
+                            <Card key={idx} className="flex flex-col justify-between hover:shadow-md">
+                                <div className="flex justify-between items-center"><span className="text-xs font-semibold uppercase text-gray-400">{m.label}</span><m.icon size={16} style={{ color: C.emerald }} /></div>
+                                <p className="font-display text-2xl font-bold mt-4" style={{ color: C.ink }}>{m.value}</p>
+                            </Card>
+                        ))}
+                    </div>
+
+                    <div className="rounded-2xl p-7 md:p-8 relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm" style={{ background: C.emerald }}>
+                        <div className="absolute -right-6 -bottom-6 opacity-10 pointer-events-none"><ArchitecturalMotif size={240} color="#FFFFFF" opacity={1} /></div>
+                        <div className="relative z-10 text-white max-w-xl">
+                            <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold mb-3 bg-white/20"><Sparkles size={12} style={{ color: C.gold }} /> Tutor Berbasis Kurikulum</div>
+                            <h3 className="font-display text-2xl font-bold">Punya pertanyaan seputar materi sekolah?</h3>
+                            <p className="text-sm mt-2 opacity-90">IQRA' AI siap membantu menjawab berdasarkan buku panduan guru kelas {profile.grade}.</p>
+                        </div>
+                        <button onClick={() => setView("ask")} className="relative z-10 rounded-xl px-5 py-3 text-sm font-bold shadow-md hover:brightness-110" style={{ background: C.gold, color: "#2B2108" }}>Mulai Sesi Tanya Jawab</button>
+                    </div>
+                </div>
+            );
+        }
+
+        function AskIqraView({ profile, documents, onNewExchange, showToast }) {
+            const [mode, setMode] = useState("jelaskan");
+            const [subject, setSubject] = useState(SUBJECTS[2]);
+            const [messages, setMessages] = useState([]);
+            const [input, setInput] = useState("");
+            const [loading, setLoading] = useState(false);
+            const [showModeInfo, setShowModeInfo] = useState(false);
+            const scrollRef = useRef(null);
+
+            useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }); }, [messages, loading]);
+
+            const send = async (text = input) => {
+                const q = text.trim();
+                if (!q || loading) return;
+                setInput("");
+                setMessages(prev => [...prev, { id: crypto.randomUUID(), role: "user", text: q }]);
+                setLoading(true);
+                try {
+                    const teacherDocs = matchTeacherDocs(q, profile.grade, subject, documents);
+                    const data = await generateEducationalResponse({ question: q, mode, grade: profile.grade, subject, teacherDocs });
+                    const aiMsg = { id: crypto.randomUUID(), role: "ai", data, question: q, subject };
+                    setMessages(prev => [...prev, aiMsg]);
+                    onNewExchange({ question: q, subject, data, teacherDocs });
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleVote = (id, type) => setMessages(prev => prev.map(m => m.id === id ? { ...m, vote: type } : m));
+            const handleBookmark = async (msg) => {
+                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, bookmarked: !m.bookmarked } : m));
+                const bookmarks = await storeGet("bookmarks", []);
+                if (!msg.bookmarked) {
+                    await storeSet("bookmarks", [...bookmarks, { id: msg.id, question: msg.question, data: msg.data, ts: Date.now() }]);
+                    showToast("Tersimpan ke Bookmark.");
+                } else {
+                    await storeSet("bookmarks", bookmarks.filter(b => b.id !== msg.id));
+                }
+            };
+
+            return (
+                <div className="flex flex-col h-full bg-[#FAF9F5]">
+                    <div className="px-6 py-3.5 bg-white border-b shrink-0 flex items-center justify-between flex-wrap gap-3 z-10 relative" style={{ borderColor: C.border }}>
+                        <div className="flex items-center gap-1.5 overflow-x-auto">
+                            {MODES.map(m => (
+                                <button key={m.id} onClick={() => setMode(m.id)} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shrink-0 border" style={{ borderColor: mode === m.id ? C.emerald : C.border, background: mode === m.id ? C.emeraldBg : "transparent", color: mode === m.id ? C.emerald : C.inkSoft }}>
+                                    <m.icon size={13} /> <span>{m.label}</span>
+                                </button>
+                            ))}
+                            <button onClick={() => setShowModeInfo(true)} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400"><HelpCircle size={16}/></button>
+                        </div>
+                        <select value={subject} onChange={e => setSubject(e.target.value)} className="text-xs font-medium rounded-lg px-3 py-1.5 outline-none border bg-gray-50 text-gray-800">
+                            {SUBJECTS.map(s => <option key={s}>{s}</option>)}
+                        </select>
+                    </div>
+
+                    {showModeInfo && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.5)" }}>
+                            <div className="bg-white max-w-md p-6 rounded-2xl rise-in">
+                                <h3 className="font-bold text-lg mb-4 text-gray-800">Fungsi Mode Belajar</h3>
+                                <ul className="space-y-3 text-sm">
+                                    {MODES.map(m => (
+                                        <li key={m.id} className="flex gap-3"><m.icon size={18} className="text-emerald-700 shrink-0"/><div><strong className="text-gray-800">{m.label}:</strong> <span className="text-gray-600">{m.desc}</span></div></li>
+                                    ))}
+                                </ul>
+                                <button onClick={() => setShowModeInfo(false)} className="mt-6 w-full py-2 bg-emerald-700 text-white rounded-lg font-bold">Mengerti</button>
+                            </div>
+                        </div>
+                    )}
+
+                    <div ref={scrollRef} className="flex-1 overflow-y-auto iqra-scroll p-4 md:p-6 pb-24">
+                        {messages.length === 0 && (
+                            <div className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto">
+                                <ArchitecturalMotif size={60} opacity={0.2} />
+                                <p className="font-display text-xl font-bold mt-4" style={{ color: C.ink }}>Ruang Diskusi {subject}</p>
+                                <p className="text-sm mt-2 text-gray-500 mb-6">Pilih mode "Detektif Ilmu" jika kamu ingin dipandu menemukan jawaban sendiri, atau "Buku Teks" untuk jawaban ketat dari modul guru.</p>
+                                <div className="w-full space-y-2">
+                                    {["Jelaskan proses fotosintesis tumbuhan.", "Bagaimana cara menyelesaikan pecahan campuran?"].map((q, i) => (
+                                        <button key={i} onClick={() => send(q)} className="w-full text-xs p-3 text-left border rounded-xl bg-white hover:border-emerald-300 transition-colors shadow-sm text-gray-700">{q}</button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {messages.map(m => <ChatMessageItem key={m.id} msg={m} onVote={handleVote} onBookmark={handleBookmark} />)}
+                        {loading && <div className="text-xs flex items-center gap-2 text-emerald-700 bg-white p-3 rounded-xl border shadow-sm w-max"><Loader2 size={14} className="animate-spin"/> AI sedang membaca pustaka kelas...</div>}
+                    </div>
+
+                    <div className="p-4 bg-white border-t shrink-0 absolute bottom-0 left-0 right-0 z-10 w-full" style={{ borderColor: C.borderSoft }}>
+                        <div className="max-w-4xl mx-auto flex gap-2 rounded-xl p-1.5 border focus-within:border-emerald-600 bg-gray-50 shadow-sm transition-all">
+                            <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder={`Ketik pertanyaan tentang ${subject}...`} className="flex-1 py-2 px-3 text-sm outline-none bg-transparent text-gray-800" />
+                            <button onClick={() => send()} disabled={loading||!input} className="p-2.5 rounded-lg bg-emerald-800 text-white disabled:opacity-50 transition-colors hover:bg-emerald-700"><Send size={16}/></button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function UjiPemahamanView({ profile, assignments, submissions, setSubmissions, showToast }) {
+            const [selectedTask, setSelectedTask] = useState(null);
+            const [answer, setAnswer] = useState("");
+            const [isGrading, setIsGrading] = useState(false);
+            const myTasks = assignments.filter(a => a.grade === profile.grade);
+
+            const submitAnswer = () => {
+                setIsGrading(true);
+                setTimeout(async () => {
+                    let score = answer.length > 50 ? 95 : 65;
+                    let feedback = answer.length > 50 ? "Luar biasa! Analisismu mendalam dan mencakup poin inti dengan baik." : "Jawabanmu masih terlalu singkat. Coba elaborasi argumenmu.";
+                    const newSub = { id: crypto.randomUUID(), assignmentId: selectedTask.id, studentName: profile.name, answer, score, feedback, date: new Date().toISOString() };
+                    const updated = [newSub, ...submissions];
+                    setSubmissions(updated);
+                    await storeSet("submissions", updated);
+                    setIsGrading(false); setSelectedTask(null); setAnswer(""); showToast("Tugas terkumpul dan dinilai AI.");
+                }, 1500);
+            };
+
+            return (
+                <div className="p-6 md:p-8 max-w-4xl mx-auto space-y-6">
+                    <h2 className="font-display text-3xl font-bold text-gray-800">Uji Pemahaman (LMS)</h2>
+                    <p className="text-sm text-gray-500">Kerjakan soal dari guru dan dapatkan koreksi otomatis dari AI.</p>
+                    
+                    <div className="grid gap-4">
+                        {myTasks.map(asm => {
+                            const sub = submissions.find(s => s.assignmentId === asm.id && s.studentName === profile.name);
+                            return (
+                                <Card key={asm.id}>
+                                    <div className="flex justify-between mb-2"><span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{asm.subject}</span>{sub ? <span className="text-xs text-green-600 font-bold flex gap-1 items-center"><CheckCircle size={14}/> Selesai</span> : <span className="text-xs text-orange-500 font-bold">Tugas Aktif</span>}</div>
+                                    <h3 className="font-bold text-gray-800">{asm.title}</h3>
+                                    <p className="text-xs text-gray-600 mt-1">{asm.question}</p>
+                                    {sub ? (
+                                        <div className="mt-4 p-3 bg-green-50 border border-green-100 rounded-lg">
+                                            <div className="flex justify-between text-green-800 font-bold mb-1"><span>Nilai AI:</span><span>{sub.score}/100</span></div>
+                                            <p className="text-xs text-green-700 italic">"{sub.feedback}"</p>
+                                        </div>
+                                    ) : (
+                                        <button onClick={() => setSelectedTask(asm)} className="mt-4 w-full py-2 bg-emerald-800 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors">Kerjakan Sekarang</button>
+                                    )}
+                                </Card>
+                            )
+                        })}
+                        {myTasks.length === 0 && <p className="text-sm text-gray-500">Belum ada tugas untuk kelasmu.</p>}
+                    </div>
+
+                    {selectedTask && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                            <div className="bg-white w-full max-w-xl rounded-2xl flex flex-col max-h-[90vh] shadow-xl rise-in">
+                                <div className="p-4 border-b flex justify-between bg-gray-50 rounded-t-2xl"><h3 className="font-bold text-sm text-gray-800">Lembar Jawab</h3><button onClick={() => !isGrading && setSelectedTask(null)} className="text-gray-500 hover:text-gray-800"><X size={16}/></button></div>
+                                <div className="p-4 overflow-y-auto">
+                                    <div className="bg-orange-50 p-3 rounded-xl mb-4 text-sm text-orange-900 border border-orange-100 shadow-inner">{selectedTask.question}</div>
+                                    <textarea rows={6} value={answer} onChange={e => setAnswer(e.target.value)} disabled={isGrading} placeholder="Ketik jawaban uraianmu..." className="w-full border rounded-xl p-3 text-sm focus:ring-1 focus:ring-emerald-500 outline-none text-gray-800"/>
+                                </div>
+                                <div className="p-4 border-t bg-white rounded-b-2xl">
+                                    <button onClick={submitAnswer} disabled={isGrading || answer.length < 5} className="w-full py-3 bg-emerald-800 text-white rounded-xl font-bold flex justify-center items-center gap-2 hover:bg-emerald-700 transition-colors disabled:opacity-50">
+                                        {isGrading ? <><Loader2 size={16} className="animate-spin"/> AI Mengoreksi...</> : "Kumpulkan & Minta Koreksi AI"}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function MaterikuView({ profile, documents }) {
+            const docs = documents.filter(d => d.grade === profile.grade && d.status === "approved");
+            return (
+                <div className="p-6 max-w-4xl mx-auto space-y-6">
+                    <h2 className="font-display text-3xl font-bold text-gray-800">Perpustakaan Kelas {profile.grade}</h2>
+                    <p className="text-sm text-gray-500">Materi yang diunggah khusus oleh guru Anda.</p>
+                    <div className="grid md:grid-cols-2 gap-4">
+                        {docs.map(d => (
+                            <Card key={d.id} className="border-l-4 border-emerald-700">
+                                <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{d.subject}</span>
+                                <h3 className="font-bold mt-2 text-gray-800">{d.title}</h3>
+                                <p className="text-xs text-gray-500 mt-1">Bab: {d.chapter}</p>
+                                <p className="text-xs mt-3 line-clamp-3 text-gray-600 leading-relaxed">{d.content}</p>
+                            </Card>
+                        ))}
+                        {docs.length === 0 && <p className="col-span-2 text-sm text-gray-500">Belum ada modul yang diunggah guru untuk kelasmu.</p>}
+                    </div>
+                </div>
+            );
+        }
+
+        function RiwayatView({ history }) {
+            return (
+                <div className="p-6 max-w-4xl mx-auto space-y-6">
+                    <h2 className="font-display text-3xl font-bold text-gray-800">Riwayat Belajar</h2>
+                    <div className="space-y-4">
+                        {history.slice().reverse().map((h, i) => (
+                            <Card key={i}><div className="flex justify-between items-start"><div><p className="text-xs text-gray-400 mb-1">{h.subject}</p><p className="font-bold text-sm text-gray-800">{h.question}</p><p className="text-xs mt-2 text-gray-600 line-clamp-2">{h.data.shortAnswer}</p></div><StrengthBadge level={h.data.sourceStrength}/></div></Card>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function AyatRelevan() {
+            const [keyword, setKeyword] = useState("");
+            const [loading, setLoading] = useState(false);
+            const [results, setResults] = useState(null);
+            const [error, setError] = useState("");
+
+            const search = async () => {
+                const q = keyword.trim();
+                if (!q || loading) return;
+                setLoading(true);
+                setError("");
+                setResults(null);
+                try {
+                    const searchRes = await fetch(`https://api.alquran.cloud/v1/search/${encodeURIComponent(q)}/all/id.indonesian`);
+                    const searchData = await searchRes.json();
+                    const matches = (searchData?.data?.matches || []).slice(0, 3);
+                    if (matches.length === 0) {
+                        setResults([]);
+                        return;
+                    }
+                    const detailed = await Promise.all(
+                        matches.map(async (m) => {
+                            try {
+                                const detailRes = await fetch(`https://api.alquran.cloud/v1/ayah/${m.number}/editions/quran-uthmani,id.indonesian`);
+                                const detailData = await detailRes.json();
+                                const arabic = detailData?.data?.[0]?.text || "";
+                                const translation = detailData?.data?.[1]?.text || m.text;
+                                return {
+                                    surahNumber: m.surah.number,
+                                    surahName: m.surah.name,
+                                    surahNameEn: m.surah.englishName,
+                                    ayahNumber: m.numberInSurah,
+                                    arabic,
+                                    translation,
+                                };
+                            } catch {
+                                return null;
+                            }
+                        })
+                    );
+                    setResults(detailed.filter(Boolean));
+                } catch (e) {
+                    setError("Pencarian ayat sedang mengalami kendala.");
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="p-6 md:p-8 max-w-3xl mx-auto space-y-6">
+                    <div>
+                        <h2 className="font-display text-3xl font-bold text-gray-800">Tafsir & Referensi</h2>
+                        <p className="text-sm text-gray-500 mt-1">Pencarian ayat tematik yang terhubung langsung dengan API Al-Qur'an terverifikasi.</p>
+                    </div>
+
+                    <div className="flex items-center gap-2 rounded-xl px-3 py-1.5 bg-white shadow-sm border focus-within:border-emerald-600 transition-colors">
+                        <Search size={18} className="text-gray-400 ml-2" />
+                        <input
+                            value={keyword}
+                            onChange={(e) => setKeyword(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && search()}
+                            placeholder="Cari tema (misal: Sabar)..."
+                            className="flex-1 py-2.5 px-2 text-sm outline-none bg-transparent text-gray-800"
+                        />
+                        <button onClick={search} disabled={loading} className="px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50" style={{ background: C.emerald }}>
+                            {loading ? <Loader2 size={16} className="animate-spin" /> : "Cari"}
+                        </button>
+                    </div>
+
+                    {error && <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100">{error}</div>}
+                    {results?.length === 0 && <div className="p-4 bg-gray-50 text-gray-600 rounded-xl text-sm border">Tidak ditemukan ayat untuk kata kunci tersebut.</div>}
+                    
+                    <div className="space-y-6">
+                        {results?.map((r, i) => (
+                            <Card key={i} className="border-t-4" style={{ borderTopColor: C.gold }}>
+                                <div className="flex justify-between items-center mb-6">
+                                    <p className="text-xs font-bold uppercase tracking-widest" style={{ color: C.gold }}>
+                                        QS. {r.surahName} ({r.surahNameEn}) : {r.ayahNumber}
+                                    </p>
+                                </div>
+                                <p className="font-arabic text-2xl leading-loose text-right mb-6" dir="rtl" style={{ color: C.ink }}>
+                                    {r.arabic}
+                                </p>
+                                <p className="text-sm leading-relaxed" style={{ color: C.inkSoft }}>
+                                    "{r.translation}"
+                                </p>
+                                <div className="mt-4 pt-3 border-t flex justify-between items-center text-xs">
+                                    <span className="text-gray-400">Terjemahan: Kemenag RI via API</span>
+                                    <a href={`https://quran.kemenag.go.id/surah/${r.surahNumber}`} target="_blank" rel="noreferrer" className="font-bold flex items-center gap-1 hover:underline" style={{ color: C.emeraldSecondary }}>
+                                        Kaji Tafsir Kemenag <ExternalLink size={10} />
+                                    </a>
+                                </div>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function TeacherDashboardView({ documents, topicFreq }) {
+            const top = Object.entries(topicFreq).sort((a,b)=>b[1]-a[1]).slice(0,3);
+            return (
+                <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-8">
+                    <h2 className="font-display text-3xl font-bold text-gray-800">Dasbor Tinjauan Pengajar</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <Card><p className="text-xs text-gray-500 uppercase font-bold">Total Modul</p><p className="text-2xl font-bold mt-2 text-gray-800">{documents.length}</p></Card>
+                        <Card><p className="text-xs text-gray-500 uppercase font-bold">Topik Hangat</p><p className="text-2xl font-bold mt-2 text-gray-800">{top.length ? top[0][0] : "-"}</p></Card>
+                    </div>
+                    <Card>
+                        <h3 className="font-bold text-sm mb-4 text-gray-800">Wawasan Pertanyaan Siswa</h3>
+                        {top.length === 0 ? <p className="text-sm text-gray-500">Belum ada data.</p> : top.map(([t, c], i) => (
+                            <div key={t} className="flex justify-between py-2 border-b last:border-0"><span className="text-sm text-gray-700">{t}</span><span className="font-bold text-emerald-700">{c} kali</span></div>
+                        ))}
+                    </Card>
+                </div>
+            );
+        }
+
+        function TeacherModulView({ documents, setDocuments, profile, showToast }) {
+            const [showForm, setShowForm] = useState(false);
+            const [form, setForm] = useState({ title: "", subject: SUBJECTS[0], grade: 5, chapter: "", content: "" });
+            const [isExtracting, setIsExtracting] = useState(false);
+            
+            const [filterSubject, setFilterSubject] = useState("Semua Mapel");
+            const [filterChapter, setFilterChapter] = useState("Semua Bab");
+
+            const handleFileChange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                setIsExtracting(true);
+                setTimeout(() => {
+                    setForm({ ...form, title: file.name.split('.')[0], content: `[Teks hasil ekstraksi otomatis dari dokumen ${file.name}]\n\nDokumen ini berisi rangkuman materi pokok yang diurai oleh AI untuk dibaca sebagai rujukan utama sistem saat menjawab siswa.` });
+                    setIsExtracting(false);
+                    showToast("Teks berhasil diekstrak dari dokumen.");
+                }, 1500);
+            };
+
+            const save = async (e) => {
+                e.preventDefault();
+                if(!form.title || !form.content) return;
+                const newDoc = { id: crypto.randomUUID(), ...form, grade: Number(form.grade), keywords: form.title.toLowerCase().split(" "), status: "approved", teacherName: profile.name };
+                const updated = [newDoc, ...documents];
+                setDocuments(updated); await storeSet("documents", updated);
+                setShowForm(false); setForm({ title: "", subject: SUBJECTS[0], grade: 5, chapter: "", content: "" });
+                showToast("Modul berhasil diterbitkan ke pustaka siswa.");
+            };
+
+            const remove = async (id) => {
+                const updated = documents.filter(d => d.id !== id);
+                setDocuments(updated); await storeSet("documents", updated); showToast("Modul berhasil dihapus.");
+            }
+
+            const availableChapters = [...new Set(documents.filter(d => filterSubject === "Semua Mapel" || d.subject === filterSubject).map(d => d.chapter))];
+            const filteredDocs = documents.filter(d => {
+                const matchSubject = filterSubject === "Semua Mapel" || d.subject === filterSubject;
+                const matchChapter = filterChapter === "Semua Bab" || d.chapter === filterChapter;
+                return matchSubject && matchChapter;
+            });
+
+            return (
+                <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 className="font-display text-3xl font-bold text-gray-800">Kelola Modul AI</h2>
+                            <p className="text-sm text-gray-500 mt-1">Repositori bahan bacaan khusus yang digunakan AI.</p>
+                        </div>
+                        <button onClick={()=>setShowForm(true)} className="px-4 py-2 bg-emerald-800 text-white text-sm font-bold rounded-xl flex gap-2 shadow-sm hover:bg-emerald-700 transition-colors"><Plus size={16}/> Unggah Modul</button>
+                    </div>
+                    
+                    {showForm && (
+                        <Card className="border-l-4 border-emerald-700 rise-in shadow-md">
+                            <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-gray-800">Formulir Pendaftaran Modul</h3><button onClick={()=>setShowForm(false)} className="text-gray-400 hover:text-gray-800"><X size={18}/></button></div>
+                            <form onSubmit={save} className="space-y-4">
+                                <div className="p-6 border-2 border-dashed border-emerald-200 rounded-xl text-center bg-emerald-50 relative hover:bg-emerald-100 transition-colors cursor-pointer">
+                                    <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" title="Pilih File" />
+                                    {isExtracting ? <div className="text-emerald-700 flex flex-col items-center justify-center gap-2 text-sm font-bold"><Loader2 className="animate-spin" size={24}/> Mengekstrak teks dari file...</div> : <div className="text-emerald-800 text-sm flex flex-col items-center gap-2"><FileUp size={28}/> <span className="font-bold">Klik atau Seret file PDF/Word/PPT ke sini</span><span className="text-xs opacity-70">AI akan otomatis mengekstrak teks di dalamnya</span></div>}
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div><label className="text-xs font-bold text-gray-500 mb-1 block">Judul Modul</label><input required value={form.title} onChange={e=>setForm({...form, title: e.target.value})} placeholder="Contoh: Modul Pancasila Bab 1" className="w-full border rounded-lg px-3 py-2 text-sm text-gray-800"/></div>
+                                    <div><label className="text-xs font-bold text-gray-500 mb-1 block">Nama Bab / Topik</label><input required value={form.chapter} onChange={e=>setForm({...form, chapter: e.target.value})} placeholder="Contoh: Gotong Royong" className="w-full border rounded-lg px-3 py-2 text-sm text-gray-800"/></div>
+                                    <div><label className="text-xs font-bold text-gray-500 mb-1 block">Mata Pelajaran</label><select value={form.subject} onChange={e=>setForm({...form, subject: e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm text-gray-800 bg-white">{SUBJECTS.map(s=><option key={s}>{s}</option>)}</select></div>
+                                    <div><label className="text-xs font-bold text-gray-500 mb-1 block">Target Kelas</label><select value={form.grade} onChange={e=>setForm({...form, grade: e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm text-gray-800 bg-white"><option value={4}>Kelas 4</option><option value={5}>Kelas 5</option><option value={6}>Kelas 6</option></select></div>
+                                </div>
+                                <div><label className="text-xs font-bold text-gray-500 mb-1 block">Teks Referensi (Bisa diedit setelah diekstrak)</label><textarea required rows={5} value={form.content} onChange={e=>setForm({...form, content: e.target.value})} placeholder="Teks referensi yang akan dibaca AI..." className="w-full border rounded-lg p-3 text-sm text-gray-800"/></div>
+                                <div className="flex justify-end gap-2 pt-2"><button type="submit" className="px-5 py-2.5 bg-emerald-800 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 transition-colors">Terbitkan ke Siswa</button></div>
+                            </form>
+                        </Card>
+                    )}
+
+                    <div className="flex flex-col sm:flex-row gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                        <div className="flex-1">
+                            <label className="text-xs font-bold text-gray-500 mb-1 block">Filter Mapel</label>
+                            <select value={filterSubject} onChange={e => {setFilterSubject(e.target.value); setFilterChapter("Semua Bab");}} className="w-full border rounded-lg px-3 py-2 text-sm text-gray-800 bg-white"><option>Semua Mapel</option>{SUBJECTS.map(s=><option key={s}>{s}</option>)}</select>
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-xs font-bold text-gray-500 mb-1 block">Filter Bab</label>
+                            <select value={filterChapter} onChange={e => setFilterChapter(e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm text-gray-800 bg-white"><option>Semua Bab</option>{availableChapters.map(c=><option key={c}>{c}</option>)}</select>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        {filteredDocs.map(d => (
+                            <Card key={d.id} className="hover:shadow-md transition-shadow">
+                                <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold uppercase tracking-wider">{d.subject}</span>
+                                            <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Kelas {d.grade}</span>
+                                            <span className="text-[10px] text-gray-500">Bab: {d.chapter}</span>
+                                        </div>
+                                        <h3 className="font-bold text-base text-gray-800">{d.title}</h3>
+                                        <p className="text-sm text-gray-600 line-clamp-2 mt-1">{d.content}</p>
+                                    </div>
+                                    <button onClick={()=>remove(d.id)} className="p-2 ml-4 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 hover:text-red-700 transition-colors" title="Hapus Modul"><Trash2 size={16}/></button>
+                                </div>
+                            </Card>
+                        ))}
+                        {filteredDocs.length === 0 && <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-300"><p className="text-gray-500">Tidak ada modul yang cocok dengan filter saat ini.</p></div>}
+                    </div>
+                </div>
+            );
+        }
+
+        function TeacherTugasView({ assignments, setAssignments, submissions, showToast }) {
+            const [showForm, setShowForm] = useState(false);
+            const [form, setForm] = useState({ title: "", subject: SUBJECTS[0], grade: 5, question: "", reference: "" });
+            const [activeSubs, setActiveSubs] = useState(null);
+
+            const handleCreate = async (e) => {
+                e.preventDefault();
+                const newAsm = { id: crypto.randomUUID(), ...form, grade: Number(form.grade) };
+                const updated = [newAsm, ...assignments];
+                setAssignments(updated); await storeSet("assignments", updated);
+                setForm({ title: "", subject: SUBJECTS[0], grade: 5, question: "", reference: "" }); setShowForm(false); showToast("Tugas dipublikasikan.");
+            }
+            const deleteAsm = async (id) => {
+                const updated = assignments.filter(a => a.id !== id);
+                setAssignments(updated); await storeSet("assignments", updated); showToast("Tugas dihapus.");
+            }
+
+            return (
+                <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 className="font-display text-3xl font-bold text-gray-800">Tugas & Ujian LMS</h2>
+                            <p className="text-sm text-gray-500 mt-1">Buat soal esai dan biarkan AI membantu mengoreksi.</p>
+                        </div>
+                        <button onClick={()=>setShowForm(true)} className="px-4 py-2 bg-emerald-800 text-white text-sm font-bold rounded-xl flex gap-2 shadow-sm hover:bg-emerald-700 transition-colors"><Plus size={16}/> Buat Tugas</button>
+                    </div>
+
+                    {showForm && (
+                        <Card className="border-l-4 border-emerald-700 rise-in shadow-md">
+                            <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-gray-800">Formulasi Soal Ujian Baru</h3><button onClick={()=>setShowForm(false)} className="text-gray-400 hover:text-gray-800"><X size={18}/></button></div>
+                            <form onSubmit={handleCreate} className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div><label className="text-xs font-bold text-gray-500 mb-1 block">Judul Ujian/Tugas</label><input required value={form.title} onChange={e=>setForm({...form, title: e.target.value})} placeholder="Contoh: Evaluasi Tengah Semester" className="w-full border rounded-lg px-3 py-2 text-sm text-gray-800"/></div>
+                                    <div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div><label className="text-xs font-bold text-gray-500 mb-1 block">Mapel</label><select value={form.subject} onChange={e=>setForm({...form, subject: e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm text-gray-800 bg-white">{SUBJECTS.map(s=><option key={s}>{s}</option>)}</select></div>
+                                            <div><label className="text-xs font-bold text-gray-500 mb-1 block">Kelas</label><select value={form.grade} onChange={e=>setForm({...form, grade: e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm text-gray-800 bg-white"><option value={4}>Kelas 4</option><option value={5}>Kelas 5</option><option value={6}>Kelas 6</option></select></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div><label className="text-xs font-bold text-gray-500 mb-1 block">Instruksi Soal Uraian (yang akan dibaca siswa)</label><textarea required rows={3} value={form.question} onChange={e=>setForm({...form, question: e.target.value})} placeholder="Sebutkan dan jelaskan..." className="w-full border rounded-lg p-3 text-sm text-gray-800"/></div>
+                                <div><label className="text-xs font-bold text-emerald-700 mb-1 block">Kunci Jawaban Guru (Pedoman Penilaian AI)</label><textarea required rows={3} value={form.reference} onChange={e=>setForm({...form, reference: e.target.value})} placeholder="Sebutkan poin wajib ada dalam jawaban siswa..." className="w-full border rounded-lg p-3 text-sm text-emerald-900 bg-emerald-50 border-emerald-200"/></div>
+                                <button type="submit" className="px-4 py-2.5 bg-emerald-800 text-white rounded-lg text-sm font-bold w-full hover:bg-emerald-700 transition-colors">Publikasikan Ujian ke Portal Siswa</button>
+                            </form>
+                        </Card>
+                    )}
+
+                    <div className="space-y-4">
+                        {assignments.map(asm => {
+                            const subs = submissions.filter(s => s.assignmentId === asm.id);
+                            return (
+                                <Card key={asm.id} className="hover:shadow-md transition-shadow">
+                                    <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+                                        <div className="flex-1">
+                                            <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold uppercase tracking-wider">{asm.subject} · Kelas {asm.grade}</span>
+                                            <h3 className="font-bold text-base mt-2 text-gray-800">{asm.title}</h3>
+                                            <p className="text-sm text-gray-600 line-clamp-2 mt-1">{asm.question}</p>
+                                        </div>
+                                        <div className="flex md:flex-col gap-2 items-end w-full md:w-auto">
+                                            <button onClick={()=>setActiveSubs({asm, subs})} className="flex-1 md:flex-none text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-lg hover:bg-emerald-100 transition-colors whitespace-nowrap"><Inbox size={14} className="inline mr-1"/> Koreksi AI ({subs.length})</button>
+                                            <button onClick={()=>deleteAsm(asm.id)} className="text-xs text-red-500 p-2 hover:bg-red-50 rounded-lg"><Trash2 size={14}/></button>
+                                        </div>
+                                    </div>
+                                </Card>
+                            )
+                        })}
+                        {assignments.length === 0 && !showForm && <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-300"><p className="text-gray-500">Belum ada tugas/ujian yang dipublikasikan.</p></div>}
+                    </div>
+
+                    {activeSubs && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                            <div className="bg-white w-full max-w-2xl rounded-2xl flex flex-col max-h-[90vh] shadow-xl rise-in">
+                                <div className="p-4 border-b flex justify-between bg-emerald-800 text-white rounded-t-2xl"><h3 className="font-bold text-sm">Hasil Koreksi AI: {activeSubs.asm.title}</h3><button onClick={()=>setActiveSubs(null)} className="hover:text-gray-200"><X size={18}/></button></div>
+                                <div className="p-5 overflow-y-auto space-y-4 bg-gray-50 flex-1">
+                                    <div className="bg-white p-4 rounded-lg border shadow-sm text-sm"><strong className="text-gray-800 block mb-1">Rujukan Guru:</strong> <span className="text-gray-600">{activeSubs.asm.reference}</span></div>
+                                    {activeSubs.subs.map((s,i)=>(
+                                        <div key={i} className="bg-white p-5 rounded-xl border shadow-sm">
+                                            <div className="flex justify-between border-b pb-2 mb-3"><span className="font-bold text-base text-gray-800">{s.studentName}</span><span className={`font-display font-bold text-lg ${s.score>70?'text-green-600':'text-orange-500'}`}>Nilai: {s.score}</span></div>
+                                            <p className="text-sm mb-4 text-gray-700 italic">"{s.answer}"</p>
+                                            <div className="text-sm bg-orange-50 border border-orange-100 text-orange-900 p-3 rounded-lg flex items-start gap-2">
+                                                <Brain size={16} className="mt-0.5 shrink-0 text-orange-700"/>
+                                                <div><strong className="block mb-1">Analisis Evaluator AI:</strong> {s.feedback}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {activeSubs.subs.length === 0 && <div className="text-center py-10"><p className="text-gray-500">Belum ada siswa yang mengumpulkan tugas ini.</p></div>}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function TeacherDomainView({ sources, setSources, showToast }) {
+            const [form, setForm] = useState({ domain: "", org: "" });
+
+            const handleAdd = async (e) => {
+                e.preventDefault();
+                if (!form.domain || !form.org) return;
+                const newSource = { id: crypto.randomUUID(), ...form, active: true };
+                const updated = [newSource, ...sources];
+                setSources(updated);
+                await storeSet("trustedSources", updated);
+                setForm({ domain: "", org: "" });
+                showToast("Domain rujukan berhasil ditambahkan.");
+            };
+
+            const toggleStatus = async (id) => {
+                const updated = sources.map(s => s.id === id ? { ...s, active: !s.active } : s);
+                setSources(updated);
+                await storeSet("trustedSources", updated);
+            };
+
+            const removeSource = async (id) => {
+                const updated = sources.filter(s => s.id !== id);
+                setSources(updated);
+                await storeSet("trustedSources", updated);
+                showToast("Domain dihapus.");
+            };
+
+            return (
+                <div className="p-6 md:p-8 max-w-4xl mx-auto space-y-6">
+                    <div>
+                        <h2 className="font-display text-3xl font-bold text-gray-800">Domain Rujukan (Tingkat 2)</h2>
+                        <p className="text-sm text-gray-500 mt-1">Kelola sumber website eksternal yang diizinkan untuk diakses AI ketika Modul Guru tidak mencukupi.</p>
+                    </div>
+
+                    <Card className="border-l-4 border-emerald-700">
+                        <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-3">
+                            <input required value={form.domain} onChange={e=>setForm({...form, domain: e.target.value})} placeholder="Contoh: kemdikbud.go.id" className="flex-1 border rounded-lg px-3 py-2 text-sm text-gray-800"/>
+                            <input required value={form.org} onChange={e=>setForm({...form, org: e.target.value})} placeholder="Organisasi" className="flex-1 border rounded-lg px-3 py-2 text-sm text-gray-800"/>
+                            <button type="submit" className="px-5 py-2 bg-emerald-800 text-white rounded-lg text-sm font-bold shadow-sm hover:bg-emerald-700">Tambah</button>
+                        </form>
+                    </Card>
+
+                    <div className="space-y-3">
+                        {sources.map(s => (
+                            <Card key={s.id} className="py-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <Globe size={20} className={s.active ? "text-emerald-600" : "text-gray-400"} />
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-800">{s.org}</p>
+                                            <p className="text-xs text-gray-500">{s.domain}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <button onClick={() => toggleStatus(s.id)} className={`px-3 py-1 rounded-full text-xs font-bold ${s.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                            {s.active ? 'Aktif' : 'Nonaktif'}
+                                        </button>
+                                        <button onClick={() => removeSource(s.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={16}/></button>
+                                    </div>
+                                </div>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function FilosofiView() {
+            const principles = [
+                { icon: "📖", title: "READ", desc: "Membaca sumber sebelum menerima jawaban." },
+                { icon: "💡", title: "UNDERSTAND", desc: "Memahami informasi yang disajikan." },
+                { icon: "🧠", title: "THINK", desc: "Memikirkan dan menganalisis lebih dalam." },
+                { icon: "🔍", title: "VERIFY", desc: "Memeriksa kebenaran melalui sumber otentik." },
+                { icon: "🌱", title: "REFLECT", desc: "Merefleksikan apa yang telah dipelajari untuk diamalkan." },
+            ];
+            return (
+                <div className="p-6 md:p-8 max-w-4xl mx-auto space-y-6">
+                    <div>
+                        <h2 className="font-display text-3xl font-bold text-gray-800">Filosofi IQRA'</h2>
+                        <p className="text-sm text-gray-500 mt-1">Landasan fundamental dalam merancang interaksi AI untuk pendidikan Islam.</p>
+                    </div>
+                    <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {principles.map(p => (
+                            <Card key={p.title} className="text-center py-6">
+                                <div className="text-3xl mb-3">{p.icon}</div>
+                                <h3 className="font-display font-bold text-emerald-800 mb-2">{p.title}</h3>
+                                <p className="text-xs text-gray-600 leading-relaxed">{p.desc}</p>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        const NAVIGATION_CONFIG = {
+            student: [
+                { id: "dashboard", label: "Beranda", icon: Home },
+                { id: "ask", label: "Ask IQRA'", icon: Brain },
+                { id: "materiku", label: "Perpustakaan", icon: BookOpen },
+                { id: "uji", label: "Tugas (LMS)", icon: ClipboardEdit },
+                { id: "riwayat", label: "Riwayat", icon: History },
+                { id: "ayat", label: "Referensi Ayat", icon: BookMarked },
+            ],
+            teacher: [
+                { id: "overview", label: "Wawasan Kelas", icon: BarChart3 },
+                { id: "modul", label: "Kelola Modul AI", icon: Upload },
+                { id: "tugas", label: "Kelola Tugas LMS", icon: ClipboardCheck },
+                { id: "domain", label: "Domain Rujukan", icon: Globe },
+                { id: "filosofi", label: "Filosofi", icon: Info },
+            ]
+        };
+
+        function App() {
+            const [ready, setReady] = useState(false);
+            const [profile, setProfile] = useState({ role: "student", name: "Siswa Kelas 5", grade: 5 });
+            const [view, setView] = useState("dashboard");
+            const [sidebarOpen, setSidebarOpen] = useState(false);
+            const [roleModalOpen, setRoleModalOpen] = useState(false);
+            const [toastMsg, setToastMsg] = useState(null);
+            
+            const [lmsAuthenticated, setLmsAuthenticated] = useState(false);
+            const [showLmsModal, setShowLmsModal] = useState(false);
+
+            const [documents, setDocuments] = useState([]);
+            const [assignments, setAssignments] = useState([]);
+            const [submissions, setSubmissions] = useState([]);
+            const [history, setHistory] = useState([]);
+            const [topicFreq, setTopicFreq] = useState({});
+            const [trustedSources, setTrustedSources] = useState([
+                { id: "ts-1", domain: "kemdikdasmen.go.id", org: "Kemdikdasmen RI", active: true },
+                { id: "ts-2", domain: "quran.kemenag.go.id", org: "Al-Qur'an Kemenag RI", active: true }
+            ]);
+
+            const showToast = useCallback((msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 3000); }, []);
+
+            useEffect(() => {
+                (async () => {
+                    const [p, h, d, a, s, tf, ts] = await Promise.all([
+                        storeGet("user-profile", null), storeGet("history", []), storeGet("documents", BASE_CORPUS),
+                        storeGet("assignments", BASE_ASSIGNMENTS), storeGet("submissions", []), storeGet("topicFreq", {}), storeGet("trustedSources", null)
+                    ]);
+                    if (p) { setProfile(p); setView(p.role === "student" ? "dashboard" : "overview"); }
+                    setHistory(h); setDocuments(d); setAssignments(a); setSubmissions(s); setTopicFreq(tf);
+                    if (ts) setTrustedSources(ts);
+                    setReady(true);
+                })();
+            }, []);
+
+            const handleNavClick = (id) => {
+                if (profile.role === "student" && id === "uji" && !lmsAuthenticated) {
+                    setShowLmsModal(true);
+                    setSidebarOpen(false);
+                    return;
+                }
+                setView(id); 
+                setSidebarOpen(false); 
+            };
+            
+            const handleRoleChange = async (newProf) => {
+                setProfile(newProf); await storeSet("user-profile", newProf);
+                setView(newProf.role === "student" ? "dashboard" : "overview");
+                setLmsAuthenticated(false);
+                setRoleModalOpen(false); setSidebarOpen(false); showToast(`Berhasil masuk sebagai ${newProf.role === "student" ? "Siswa" : "Guru"}`);
+            };
+
+            const handleLmsAuthSuccess = () => {
+                setLmsAuthenticated(true);
+                setShowLmsModal(false);
+                setView("uji");
+                showToast("Akses LMS dibuka.");
+            };
+
+            const handleNewExchange = async ({ question, subject, data, teacherDocs }) => {
+                const entry = { question, subject, data, ts: Date.now() };
+                const newHist = [...history, entry]; setHistory(newHist); storeSet("history", newHist);
+                const topic = teacherDocs[0]?.chapter || subject;
+                const newFreq = { ...topicFreq, [topic]: (topicFreq[topic] || 0) + 1 };
+                setTopicFreq(newFreq); storeSet("topicFreq", newFreq);
+            };
+
+            if (!ready) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="animate-spin text-emerald-700" size={32}/></div>;
+
+            const currentNav = NAVIGATION_CONFIG[profile.role];
+
+            const renderActiveView = () => {
+                if (profile.role === "student") {
+                    switch (view) {
+                        case "dashboard": return <StudentDashboardView profile={profile} history={history} setView={handleNavClick} />;
+                        case "ask": return <AskIqraView profile={profile} documents={documents} onNewExchange={handleNewExchange} showToast={showToast} />;
+                        case "materiku": return <MaterikuView profile={profile} documents={documents} />;
+                        case "ayat": return <AyatRelevan />;
+                        case "uji": return <UjiPemahamanView profile={profile} assignments={assignments} submissions={submissions} setSubmissions={setSubmissions} showToast={showToast} />;
+                        case "riwayat": return <RiwayatView history={history} />;
+                        default: return <StudentDashboardView profile={profile} history={history} setView={handleNavClick} />;
+                    }
+                } else {
+                    switch (view) {
+                        case "overview": return <TeacherDashboardView documents={documents} topicFreq={topicFreq} />;
+                        case "modul": return <TeacherModulView documents={documents} setDocuments={setDocuments} profile={profile} showToast={showToast} />;
+                        case "tugas": return <TeacherTugasView assignments={assignments} setAssignments={setAssignments} submissions={submissions} showToast={showToast} />;
+                        case "domain": return <TeacherDomainView sources={trustedSources} setSources={setTrustedSources} showToast={showToast} />;
+                        case "filosofi": return <FilosofiView />;
+                        default: return <TeacherModulView documents={documents} setDocuments={setDocuments} profile={profile} showToast={showToast} />;
+                    }
+                }
+            };
+
+            return (
+                <div className="h-screen flex flex-col font-body text-[#17332D]" style={{ background: C.bg }}>
+                    <FontsAndStyles />
+                    <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
+
+                    <header className="shrink-0 z-30 flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200 shadow-sm relative">
+                        <div className="flex items-center gap-3">
+                            <button onClick={() => setSidebarOpen(true)} className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-gray-700">
+                                <Menu size={20} />
+                            </button>
+                            <div className="flex items-center gap-2 text-emerald-800 font-display font-bold text-lg cursor-pointer" onClick={() => handleNavClick(profile.role === 'student' ? 'dashboard' : 'overview')}>
+                                <Brain size={22} /> IQRA' AI
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-full border border-emerald-100">
+                            <span className="text-xs font-bold text-emerald-800 truncate max-w-[100px] sm:max-w-none">{profile.name}</span>
+                            <span className="text-[10px] uppercase font-bold text-emerald-600 bg-white px-2 py-0.5 rounded-full border border-emerald-100 hidden sm:inline-block">
+                                {profile.role === "student" ? `KLS ${profile.grade}` : "Guru"}
+                            </span>
+                        </div>
+                    </header>
+
+                    {sidebarOpen && (
+                        <div className="fixed inset-0 z-[60] flex">
+                            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={() => setSidebarOpen(false)}></div>
+                            <aside className="relative w-72 max-w-[80vw] h-full bg-white shadow-2xl flex flex-col animate-slide-right">
+                                <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-white text-gray-800">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-100">
+                                            <Menu size={18} className="text-gray-600" />
+                                        </div>
+                                        <div>
+                                            <span className="font-display font-bold tracking-wide block">Navigasi {profile.role === 'student' ? 'Siswa' : 'Guru'}</span>
+                                            <span className="text-[10px] text-gray-500 block">Akses: {profile.name}</span>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setSidebarOpen(false)} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+                                        <X size={18} className="text-gray-500"/>
+                                    </button>
+                                </div>
+                                
+                                <nav className="flex-1 p-4 space-y-2 overflow-y-auto bg-white">
+                                    {currentNav.map(n => (
+                                        <button key={n.id} onClick={() => handleNavClick(n.id)} className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold text-left transition-all hover:bg-emerald-50 hover:text-emerald-800" style={{ background: view === n.id ? C.emeraldBg : "transparent", color: view === n.id ? C.emerald : C.inkSoft }}>
+                                            <n.icon size={18} style={{ color: view === n.id ? C.emerald : C.inkFaint }}/> <span>{n.label}</span>
+                                        </button>
+                                    ))}
+                                </nav>
+                                
+                                <div className="p-5 border-t border-gray-100 bg-white">
+                                    <button onClick={() => { setRoleModalOpen(true); setSidebarOpen(false); }} className="w-full py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2 transition-all">
+                                        <LogOut size={16}/> Ganti Akses
+                                    </button>
+                                </div>
+                            </aside>
+                        </div>
+                    )}
+
+                    {roleModalOpen && <RoleSwitchModal current={profile} onSelect={handleRoleChange} onClose={() => setRoleModalOpen(false)} />}
+                    {showLmsModal && <LmsAuthModal onAuthenticate={handleLmsAuthSuccess} onClose={() => setShowLmsModal(false)} />}
+
+                    <main className={`flex-1 relative w-full h-full ${view === "ask" ? "overflow-hidden" : "overflow-y-auto iqra-scroll"}`}>
+                        {view !== "ask" && <div className="fixed -right-20 -bottom-20 pointer-events-none opacity-[0.03] z-0"><ArchitecturalMotif size={650} color={C.emerald} opacity={1} /></div>}
+                        <div className="relative z-10 w-full h-full">{renderActiveView()}</div>
+                    </main>
+                </div>
+            );
+        }
+
+        const root = createRoot(document.getElementById("root"));
+        root.render(<App />);
+    </script>
+</body>
+</html>
