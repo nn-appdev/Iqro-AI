@@ -40,6 +40,7 @@
       border: "#E5E9E7", borderSoft: "#F0F3F1",
       green: "#2E8B68", greenBg: "#E3F2EB",
       yellow: "#C58A25", yellowBg: "#FDF5E3",
+      orange: "#CC7A2E", orangeBg: "#FBEBDB",
       red: "#C95B54", redBg: "#FBEAE9",
     };
 
@@ -144,6 +145,7 @@
     /* ============================================================
        MODALS (LOGIN & LMS AUTH)
        ============================================================ */
+    // Hanya untuk Siswa (Tanpa nama, hanya kelas & sandi)
     function StudentLoginModal({ onSelect, settings }) {
       const [password, setPassword] = useState("");
       const [grade, setGrade] = useState(5);
@@ -195,6 +197,7 @@
       );
     }
 
+    // Untuk Guru/Admin dari sidebar
     function TeacherLoginModal({ onSelect, onClose }) {
       const [password, setPassword] = useState("");
       const [error, setError] = useState("");
@@ -234,6 +237,7 @@
       );
     }
 
+    // Modal Sandi Ujian (LMS)
     function LmsAuthModal({ onSuccess, onClose, settings }) {
       const [pwd, setPwd] = useState("");
       const [err, setErr] = useState("");
@@ -290,6 +294,208 @@
               ))}
             </div>
           </Card>
+        </div>
+      );
+    }
+
+    function TeacherModulView({ documents, setDocuments, showToast }) {
+      const [showForm, setShowForm] = useState(false);
+      const [form, setForm] = useState({ title: "", subject: SUBJECTS[0], grade: 5, chapter: "", content: "" });
+      const [isExtracting, setIsExtracting] = useState(false);
+      
+      const [filterSubject, setFilterSubject] = useState("Semua Mapel");
+      const [filterChapter, setFilterChapter] = useState("Semua Bab");
+
+      const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setIsExtracting(true);
+        setTimeout(() => {
+          setForm({ ...form, title: file.name.split('.')[0], content: `[Teks hasil ekstraksi otomatis dari dokumen ${file.name}]\n\nDokumen ini berisi rangkuman materi pokok yang diurai oleh AI untuk dibaca sebagai rujukan utama sistem saat menjawab siswa.` });
+          setIsExtracting(false);
+          showToast("Teks berhasil diekstrak dari dokumen.");
+        }, 1500);
+      };
+
+      const save = (e) => {
+        e.preventDefault();
+        if(!form.title || !form.content) return;
+        const newDoc = { id: crypto.randomUUID(), ...form, grade: Number(form.grade), keywords: form.title.toLowerCase().split(" "), status: "approved" };
+        const updated = [newDoc, ...documents];
+        setDocuments(updated);
+        localStorage.setItem("iqra-docs", JSON.stringify(updated));
+        setShowForm(false); setForm({ title: "", subject: SUBJECTS[0], grade: 5, chapter: "", content: "" });
+        showToast("Modul berhasil diterbitkan ke pustaka siswa.");
+      };
+
+      const remove = (id) => {
+        const updated = documents.filter(d => d.id !== id);
+        setDocuments(updated);
+        localStorage.setItem("iqra-docs", JSON.stringify(updated));
+        showToast("Modul berhasil dihapus.");
+      }
+
+      const availableChapters = [...new Set(documents.filter(d => filterSubject === "Semua Mapel" || d.subject === filterSubject).map(d => d.chapter))];
+      const filteredDocs = documents.filter(d => {
+        const matchSubject = filterSubject === "Semua Mapel" || d.subject === filterSubject;
+        const matchChapter = filterChapter === "Semua Bab" || d.chapter === filterChapter;
+        return matchSubject && matchChapter;
+      });
+
+      return (
+        <div className="p-6 md:p-10 max-w-5xl mx-auto space-y-6 pb-24">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 className="font-display text-3xl font-bold text-[#0F5C4D]">Kelola Modul AI</h2>
+              <p className="text-sm text-gray-500 font-medium mt-1">Repositori bahan bacaan khusus yang digunakan AI.</p>
+            </div>
+            <button onClick={()=>setShowForm(true)} className="px-5 py-2.5 bg-[#0F5C4D] text-white text-sm font-bold rounded-xl flex gap-2 shadow-md hover:bg-[#177E6A] transition-colors"><Lucide.Plus size={18}/> Unggah Modul</button>
+          </div>
+          
+          {showForm && (
+            <Card className="border-l-4 border-[#0F5C4D] rise-in shadow-md">
+              <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-[#17332D]">Formulir Pendaftaran Modul</h3><button onClick={()=>setShowForm(false)} className="text-gray-400 hover:text-gray-800"><Lucide.X size={18}/></button></div>
+              <form onSubmit={save} className="space-y-4">
+                <div className="p-6 border-2 border-dashed border-[#B8E1D5] rounded-xl text-center bg-[#DDF3ED]/30 relative hover:bg-[#DDF3ED]/60 transition-colors cursor-pointer">
+                  <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" title="Pilih File" />
+                  {isExtracting ? <div className="text-[#0F5C4D] flex flex-col items-center justify-center gap-2 text-sm font-bold"><Lucide.Loader2 className="animate-spin" size={24}/> Mengekstrak teks dari file...</div> : <div className="text-[#0F5C4D] text-sm flex flex-col items-center gap-2"><Lucide.FileUp size={28}/> <span className="font-bold">Klik atau Seret file PDF/Word/PPT ke sini</span><span className="text-xs opacity-70">AI akan otomatis mengekstrak teks di dalamnya</span></div>}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div><label className="text-xs font-bold text-gray-500 mb-1.5 block">Judul Modul</label><input required value={form.title} onChange={e=>setForm({...form, title: e.target.value})} placeholder="Contoh: Modul Pancasila Bab 1" className="w-full border-2 border-gray-100 focus:border-[#0F5C4D] outline-none rounded-xl px-4 py-2.5 text-sm text-[#17332D]"/></div>
+                  <div><label className="text-xs font-bold text-gray-500 mb-1.5 block">Nama Bab / Topik</label><input required value={form.chapter} onChange={e=>setForm({...form, chapter: e.target.value})} placeholder="Contoh: Gotong Royong" className="w-full border-2 border-gray-100 focus:border-[#0F5C4D] outline-none rounded-xl px-4 py-2.5 text-sm text-[#17332D]"/></div>
+                  <div><label className="text-xs font-bold text-gray-500 mb-1.5 block">Mata Pelajaran</label><select value={form.subject} onChange={e=>setForm({...form, subject: e.target.value})} className="w-full border-2 border-gray-100 focus:border-[#0F5C4D] outline-none rounded-xl px-4 py-2.5 text-sm text-[#17332D] bg-white">{SUBJECTS.map(s=><option key={s}>{s}</option>)}</select></div>
+                  <div><label className="text-xs font-bold text-gray-500 mb-1.5 block">Target Kelas</label><select value={form.grade} onChange={e=>setForm({...form, grade: e.target.value})} className="w-full border-2 border-gray-100 focus:border-[#0F5C4D] outline-none rounded-xl px-4 py-2.5 text-sm text-[#17332D] bg-white"><option value={4}>Kelas 4</option><option value={5}>Kelas 5</option><option value={6}>Kelas 6</option></select></div>
+                </div>
+                <div><label className="text-xs font-bold text-gray-500 mb-1.5 block">Teks Referensi</label><textarea required rows={5} value={form.content} onChange={e=>setForm({...form, content: e.target.value})} placeholder="Teks referensi yang akan dibaca AI..." className="w-full border-2 border-gray-100 focus:border-[#0F5C4D] outline-none rounded-xl p-4 text-sm text-[#17332D]"/></div>
+                <div className="flex justify-end gap-2 pt-2"><button type="submit" className="px-6 py-3 bg-[#0F5C4D] text-white rounded-xl text-sm font-bold shadow-md hover:bg-[#177E6A] transition-colors">Terbitkan ke Siswa</button></div>
+              </form>
+            </Card>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+            <div className="flex-1">
+              <label className="text-xs font-bold text-gray-500 mb-1.5 block">Filter Mapel</label>
+              <select value={filterSubject} onChange={e => {setFilterSubject(e.target.value); setFilterChapter("Semua Bab");}} className="w-full border-2 border-gray-100 rounded-xl px-4 py-2 text-sm text-[#17332D] outline-none focus:border-[#0F5C4D]"><option>Semua Mapel</option>{SUBJECTS.map(s=><option key={s}>{s}</option>)}</select>
+            </div>
+            <div className="flex-1">
+              <label className="text-xs font-bold text-gray-500 mb-1.5 block">Filter Bab</label>
+              <select value={filterChapter} onChange={e => setFilterChapter(e.target.value)} className="w-full border-2 border-gray-100 rounded-xl px-4 py-2 text-sm text-[#17332D] outline-none focus:border-[#0F5C4D]"><option>Semua Bab</option>{availableChapters.map(c=><option key={c}>{c}</option>)}</select>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {filteredDocs.map(d => (
+              <Card key={d.id} className="hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[10px] bg-[#DDF3ED] text-[#0F5C4D] px-2 py-1 rounded-md font-bold uppercase tracking-wider">{d.subject}</span>
+                      <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded-md font-bold uppercase tracking-wider">Kelas {d.grade}</span>
+                      <span className="text-[10px] text-gray-500 font-bold">Bab: {d.chapter}</span>
+                    </div>
+                    <h3 className="font-bold text-lg text-[#17332D]">{d.title}</h3>
+                    <p className="text-sm text-gray-600 line-clamp-2 mt-1.5">{d.content}</p>
+                  </div>
+                  <button onClick={()=>remove(d.id)} className="p-2.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors" title="Hapus Modul"><Lucide.Trash2 size={18}/></button>
+                </div>
+              </Card>
+            ))}
+            {filteredDocs.length === 0 && <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-200"><p className="text-gray-500 font-medium">Tidak ada modul yang cocok dengan filter.</p></div>}
+          </div>
+        </div>
+      );
+    }
+
+    function TeacherTugasView({ assignments, setAssignments, submissions, showToast }) {
+      const [showForm, setShowForm] = useState(false);
+      const [form, setForm] = useState({ title: "", subject: SUBJECTS[0], grade: 5, question: "", reference: "" });
+      const [activeSubs, setActiveSubs] = useState(null);
+
+      const handleCreate = (e) => {
+        e.preventDefault();
+        const newAsm = { id: crypto.randomUUID(), ...form, grade: Number(form.grade) };
+        const updated = [newAsm, ...assignments];
+        setAssignments(updated); localStorage.setItem("iqra-assignments", JSON.stringify(updated));
+        setForm({ title: "", subject: SUBJECTS[0], grade: 5, question: "", reference: "" }); setShowForm(false); showToast("Tugas dipublikasikan.");
+      }
+      const deleteAsm = (id) => {
+        const updated = assignments.filter(a => a.id !== id);
+        setAssignments(updated); localStorage.setItem("iqra-assignments", JSON.stringify(updated)); showToast("Tugas dihapus.");
+      }
+
+      return (
+        <div className="p-6 md:p-10 max-w-5xl mx-auto space-y-6 pb-24">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 className="font-display text-3xl font-bold text-[#0F5C4D]">Kelola Tugas LMS</h2>
+              <p className="text-sm text-gray-500 font-medium mt-1">Buat soal esai dan biarkan AI membantu mengoreksi.</p>
+            </div>
+            <button onClick={()=>setShowForm(true)} className="px-5 py-2.5 bg-[#0F5C4D] text-white text-sm font-bold rounded-xl flex gap-2 shadow-md hover:bg-[#177E6A] transition-colors"><Lucide.Plus size={18}/> Buat Tugas</button>
+          </div>
+
+          {showForm && (
+            <Card className="border-l-4 border-[#0F5C4D] rise-in shadow-md">
+              <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-[#17332D]">Formulasi Soal Ujian Baru</h3><button onClick={()=>setShowForm(false)} className="text-gray-400 hover:text-gray-800"><Lucide.X size={18}/></button></div>
+              <form onSubmit={handleCreate} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div><label className="text-xs font-bold text-gray-500 mb-1.5 block">Judul Ujian/Tugas</label><input required value={form.title} onChange={e=>setForm({...form, title: e.target.value})} placeholder="Contoh: Evaluasi Tengah Semester" className="w-full border-2 border-gray-100 rounded-xl px-4 py-2.5 text-sm text-[#17332D] outline-none focus:border-[#0F5C4D]"/></div>
+                  <div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className="text-xs font-bold text-gray-500 mb-1.5 block">Mapel</label><select value={form.subject} onChange={e=>setForm({...form, subject: e.target.value})} className="w-full border-2 border-gray-100 rounded-xl px-4 py-2.5 text-sm text-[#17332D] bg-white outline-none focus:border-[#0F5C4D]">{SUBJECTS.map(s=><option key={s}>{s}</option>)}</select></div>
+                      <div><label className="text-xs font-bold text-gray-500 mb-1.5 block">Kelas</label><select value={form.grade} onChange={e=>setForm({...form, grade: e.target.value})} className="w-full border-2 border-gray-100 rounded-xl px-4 py-2.5 text-sm text-[#17332D] bg-white outline-none focus:border-[#0F5C4D]"><option value={4}>Kelas 4</option><option value={5}>Kelas 5</option><option value={6}>Kelas 6</option></select></div>
+                    </div>
+                  </div>
+                </div>
+                <div><label className="text-xs font-bold text-gray-500 mb-1.5 block">Instruksi Soal Uraian</label><textarea required rows={3} value={form.question} onChange={e=>setForm({...form, question: e.target.value})} placeholder="Sebutkan dan jelaskan..." className="w-full border-2 border-gray-100 rounded-xl p-4 text-sm text-[#17332D] outline-none focus:border-[#0F5C4D]"/></div>
+                <div><label className="text-xs font-bold text-[#0F5C4D] mb-1.5 block">Kunci Jawaban Guru (Pedoman AI)</label><textarea required rows={3} value={form.reference} onChange={e=>setForm({...form, reference: e.target.value})} placeholder="Poin wajib ada dalam jawaban siswa..." className="w-full border-2 border-[#DDF3ED] rounded-xl p-4 text-sm text-[#0F5C4D] bg-[#F3FAF8] outline-none focus:border-[#0F5C4D]"/></div>
+                <button type="submit" className="w-full py-3.5 bg-[#0F5C4D] text-white rounded-xl text-sm font-bold shadow-md hover:bg-[#177E6A] transition-colors">Publikasikan Ujian ke Siswa</button>
+              </form>
+            </Card>
+          )}
+
+          <div className="space-y-4">
+            {assignments.map(asm => {
+              const subs = submissions.filter(s => s.assignmentId === asm.id);
+              return (
+                <Card key={asm.id} className="hover:shadow-md transition-shadow">
+                  <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+                    <div className="flex-1">
+                      <span className="text-[10px] bg-[#DDF3ED] text-[#0F5C4D] px-2 py-1 rounded-md font-bold uppercase tracking-wider">{asm.subject} · Kelas {asm.grade}</span>
+                      <h3 className="font-bold text-lg mt-2 text-[#17332D]">{asm.title}</h3>
+                      <p className="text-sm text-gray-600 line-clamp-2 mt-1.5">{asm.question}</p>
+                    </div>
+                    <div className="flex gap-2 w-full md:w-auto">
+                      <button onClick={()=>setActiveSubs({asm, subs})} className="flex-1 md:flex-none text-xs font-bold text-[#0F5C4D] bg-[#DDF3ED] px-4 py-2.5 rounded-xl hover:bg-[#B8E1D5] transition-colors whitespace-nowrap flex items-center justify-center gap-1.5"><Lucide.Inbox size={16}/> Koreksi AI ({subs.length})</button>
+                      <button onClick={()=>deleteAsm(asm.id)} className="text-xs text-red-500 p-2.5 hover:bg-red-50 rounded-xl transition-colors"><Lucide.Trash2 size={16}/></button>
+                    </div>
+                  </div>
+                </Card>
+              )
+            })}
+            {assignments.length === 0 && !showForm && <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-200"><p className="text-gray-500 font-medium">Belum ada tugas/ujian yang dipublikasikan.</p></div>}
+          </div>
+
+          {activeSubs && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#17332D]/60 backdrop-blur-sm">
+              <div className="bg-white w-full max-w-2xl rounded-2xl flex flex-col max-h-[90vh] shadow-2xl rise-in">
+                <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-[#0F5C4D] text-white rounded-t-2xl"><h3 className="font-bold text-base">Hasil Koreksi AI: {activeSubs.asm.title}</h3><button onClick={()=>setActiveSubs(null)} className="hover:text-gray-200"><Lucide.X size={18}/></button></div>
+                <div className="p-6 overflow-y-auto space-y-4 bg-[#F8F7F2] flex-1">
+                  <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm text-sm"><strong className="text-[#17332D] block mb-1">Rujukan Guru:</strong> <span className="text-gray-600">{activeSubs.asm.reference}</span></div>
+                  {activeSubs.subs.map((s,i)=>(
+                    <div key={i} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                      <div className="flex justify-between border-b border-gray-100 pb-3 mb-4"><span className="font-bold text-lg text-[#17332D]">{s.studentName}</span><span className={`font-display font-bold text-xl ${s.score>70?'text-[#2E8B68]':'text-[#C58A25]'}`}>Nilai: {s.score}</span></div>
+                      <p className="text-sm mb-4 text-gray-700 italic leading-relaxed">"{s.answer}"</p>
+                      <div className="text-sm bg-[#FDF5E3] border border-[#F5E4BE] text-[#7A5C1A] p-4 rounded-xl flex items-start gap-3">
+                        <Lucide.Brain size={18} className="mt-0.5 shrink-0 text-[#C58A25]"/>
+                        <div><strong className="block mb-1 text-[#C58A25]">Analisis Evaluator AI:</strong> <span className="font-medium">{s.feedback}</span></div>
+                      </div>
+                    </div>
+                  ))}
+                  {activeSubs.subs.length === 0 && <div className="text-center py-12"><p className="text-gray-500 font-medium">Belum ada siswa yang mengumpulkan tugas ini.</p></div>}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       );
     }
@@ -556,7 +762,7 @@
           </div>
 
           {showInfo && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#17332D]/40 backdrop-blur-sm">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#17332D]/40 backdrop-blur-sm">
                <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-2xl rise-in relative">
                  <button onClick={()=>setShowInfo(false)} className="absolute top-4 right-4 p-1.5 text-gray-400 hover:bg-gray-100 rounded-full"><Lucide.X size={18}/></button>
                  <h3 className="font-display font-bold text-xl mb-4 text-[#17332D]">Panduan Mode AI</h3>
@@ -870,7 +1076,7 @@
           return;
         }
         setView(id);
-        setDrawerOpen(false);
+        setDrawerOpen(false); // Menutup otomatis saat menu dipilih
       };
 
       const handleRoleChange = (newProfile) => {
@@ -883,7 +1089,12 @@
       };
 
       if (!profile) {
-        return <StudentLoginModal onSelect={handleRoleChange} settings={settings} />;
+        return (
+          <div className="h-screen flex flex-col font-body bg-[#F8F7F2] overflow-hidden selection:bg-[#F8EAC5]">
+            <FontsAndStyles />
+            <StudentLoginModal onSelect={handleRoleChange} settings={settings} />
+          </div>
+        );
       }
 
       const navItems = NAVIGATION[profile.role];
@@ -915,7 +1126,7 @@
           <FontsAndStyles />
           <Toast message={toastMsg} />
 
-          {/* Drawer Sidebar Overlay (Sesuai Permintaan) */}
+          {/* Drawer Sidebar Overlay (Otomatis Tersembunyi) */}
           {drawerOpen && <div className="fixed inset-0 bg-[#17332D]/40 z-[60] backdrop-blur-sm transition-opacity" onClick={() => setDrawerOpen(false)} />}
           
           <aside className={`fixed inset-y-0 left-0 w-72 max-w-[80vw] bg-white border-r border-[#E5E9E7] shadow-2xl z-[70] transform transition-transform duration-300 ease-in-out flex flex-col ${drawerOpen ? "translate-x-0" : "-translate-x-full"}`}>
