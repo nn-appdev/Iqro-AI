@@ -91,7 +91,7 @@
 
                     button { font-family: inherit; }
                     button:active { transform: scale(0.985); }
-                    input, select, textarea { font-family: inherit; }
+                    input, select, textarea { font-family: inherit; outline: none; }
                     input::placeholder, textarea::placeholder { color: ${C.inkFaint}; }
                     ::selection { background: ${C.goldBg}; color: ${C.ink}; }
                 `}</style>
@@ -164,30 +164,34 @@
                 .map(item => item.doc);
         }
 
-        // INJEKSI KECERDASAN GEMINI 
+        // ============================================================================
+        // LOGIKA KECERDASAN BUATAN (GEMINI API)
+        // ============================================================================
+        
         async function generateEducationalResponse({ question, mode, grade, subject, teacherDocs }) {
-    // Mengambil API Key dari Local Storage
-    const settings = await storeGet("settings", { geminiApiKey: "" });
-    const hasDoc = teacherDocs.length > 0;
-    const primaryDoc = hasDoc ? teacherDocs[0] : null;
+            const settings = await storeGet("sys-settings", { geminiApiKey: "" });
+            const hasDoc = teacherDocs.length > 0;
+            const primaryDoc = hasDoc ? teacherDocs[0] : null;
 
-    if (!settings.geminiApiKey || settings.geminiApiKey.trim() === "") {
-        await new Promise(resolve => setTimeout(resolve, 800)); // Delay simulasi
-        return {
-            shortAnswer: `Sistem AI terbatas karena Guru belum memasukkan API Key.`,
-            explanation: hasDoc ? `Dokumen terdeteksi: ${primaryDoc.title}. Namun AI gagal memprosesnya karena kunci akses belum ada.` : `Sistem tidak dapat menghasilkan analisis otomatis.`,
-            thinkPrompt: `Silakan hubungi Guru Anda untuk mengaktifkan kecerdasan buatan.`,
-            sources: hasDoc ? [{ icon: "📘", label: primaryDoc.title, detail: `Bab: ${primaryDoc.chapter}` }] : [],
-            sourceStrength: "red",
-            note: "Kunci API Gemini Kosong"
-        };
-    }
+            if (!settings.geminiApiKey || settings.geminiApiKey.trim() === "") {
+                await new Promise(resolve => setTimeout(resolve, 800)); // Delay simulasi
+                return {
+                    shortAnswer: `Sistem AI terbatas karena Guru belum memasukkan API Key.`,
+                    explanation: hasDoc ? `Dokumen terdeteksi: ${primaryDoc.title}. Namun AI gagal memprosesnya karena kunci akses belum ada.` : `Sistem tidak dapat menghasilkan analisis otomatis.`,
+                    thinkPrompt: `Silakan hubungi Guru Anda untuk mengaktifkan kecerdasan buatan.`,
+                    sources: hasDoc ? [{ icon: "📘", label: primaryDoc.title, detail: `Bab: ${primaryDoc.chapter}` }] : [],
+                    sourceStrength: "red",
+                    note: "Kunci API Gemini Kosong"
+                };
+            }
 
-    // Pembersihan spasi otomatis pada Kunci API
-    const cleanKey = settings.geminiApiKey.trim();
-    let contextText = hasDoc ? `Materi Referensi (WAJIB ACUAN): Judul: ${primaryDoc.title}, Bab: ${primaryDoc.chapter}\nIsi: ${primaryDoc.content}` : "Tidak ada rujukan guru. Gunakan kurikulum SD standar Indonesia.";
+            // Pembersihan spasi otomatis pada Kunci API
+            const cleanKey = settings.geminiApiKey.trim();
+            let contextText = hasDoc 
+                ? `Materi Referensi (WAJIB ACUAN): Judul: ${primaryDoc.title}, Bab: ${primaryDoc.chapter}\nIsi: ${primaryDoc.content}` 
+                : "Tidak ada rujukan guru. Gunakan kurikulum SD standar Indonesia.";
 
-    const prompt = `Kamu IQRA' AI untuk SD Kelas ${grade} mapel ${subject}.
+            const prompt = `Kamu IQRA' AI untuk SD Kelas ${grade} mapel ${subject}.
 Konteks: ${contextText}
 Tanya: "${question}"
 Mode Belajar: "${mode}"
@@ -198,75 +202,90 @@ Aturan:
 - buku: Jawab HANYA dari Materi Referensi. Jika tidak ada di referensi, tolak halus.
 
 Jawab HANYA dalam JSON valid tanpa block markdown:
-{"shortAnswer": "kesimpulan 1-2 kalimat", "explanation": "penjelasan detail", "thinkPrompt": "pertanyaan pancingan nalar", "sourceStrength": "green/yellow/orange/red"}`;
+{"shortAnswer": "kesimpulan 1-2 kalimat", "explanation": "penjelasan detail", "thinkPrompt": "pertanyaan pancingan nalar (bisa null)", "sourceStrength": "green/yellow/orange/red"}`;
 
-    try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cleanKey}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3 } })
-        });
-        
-        // Memaksa error mentah dari server Google keluar jika gagal
-        if (!res.ok) {
-            let errorDetails = `HTTP Error ${res.status}`;
             try {
-                const errData = await res.json();
-                errorDetails = errData.error?.message || errorDetails;
-            } catch(e) {}
-            throw new Error(errorDetails);
-        }
-        
-        const data = await res.json();
-        let rawText = data.candidates[0].content.parts[0].text;
-        rawText = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
-        const parsed = JSON.parse(rawText);
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cleanKey}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3 } })
+                });
+                
+                // Memaksa error mentah dari server Google keluar jika gagal
+                if (!res.ok) {
+                    let errorDetails = `HTTP Error ${res.status}`;
+                    try {
+                        const errData = await res.json();
+                        errorDetails = errData.error?.message || errorDetails;
+                    } catch(e) {}
+                    throw new Error(errorDetails);
+                }
+                
+                const data = await res.json();
+                let rawText = data.candidates[0].content.parts[0].text;
+                rawText = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
+                const parsed = JSON.parse(rawText);
 
-        return {
-            shortAnswer: parsed.shortAnswer || "Gagal merangkum.",
-            explanation: parsed.explanation || "",
-            thinkPrompt: parsed.thinkPrompt || null,
-            sources: hasDoc ? [{ icon: "📘", label: primaryDoc.title, detail: `Bab: ${primaryDoc.chapter}` }] : [],
-            sourceStrength: parsed.sourceStrength || (hasDoc ? "green" : "yellow"),
-            note: hasDoc ? null : "Berdasarkan AI umum."
-        };
-    } catch (error) {
-        // Mencetak error langsung ke layar siswa agar tidak perlu menebak-nebak
-        return {
-            shortAnswer: "Akses ditolak oleh server Google.",
-            explanation: `ALASAN DARI GOOGLE: "${error.message}"`,
-            thinkPrompt: "Tolong periksa menu Pengaturan Sistem. Pastikan Kunci API baru Anda dimasukkan tanpa ada spasi ekstra.",
-            sources: [],
-            sourceStrength: "red",
-            note: "API Error Terdeteksi"
-        };
-    }
-}
-
-        // INJEKSI KOREKSI LMS GEMINI
-        async function gradeEsaiAI(question, answer, reference, apiKey) {
-            if (!apiKey) {
-                return { score: answer.length > 50 ? 95 : 65, feedback: "[Mode Offline] API Key AI belum aktif, nilai digenerate acak berdasarkan panjang teks." };
+                return {
+                    shortAnswer: parsed.shortAnswer || "Gagal merangkum.",
+                    explanation: parsed.explanation || "",
+                    thinkPrompt: parsed.thinkPrompt || null,
+                    sources: hasDoc ? [{ icon: "📘", label: primaryDoc.title, detail: `Bab: ${primaryDoc.chapter}` }] : [],
+                    sourceStrength: parsed.sourceStrength || (hasDoc ? "green" : "yellow"),
+                    note: hasDoc ? null : "Berdasarkan AI umum."
+                };
+            } catch (error) {
+                // Mencetak error langsung ke layar siswa agar tidak perlu menebak-nebak
+                return {
+                    shortAnswer: "Akses ditolak oleh server Google.",
+                    explanation: `ALASAN DARI GOOGLE: "${error.message}"`,
+                    thinkPrompt: "Tolong periksa menu Pengaturan Sistem. Pastikan Kunci API baru Anda dimasukkan tanpa ada spasi ekstra.",
+                    sources: [],
+                    sourceStrength: "red",
+                    note: "API Error Terdeteksi"
+                };
             }
+        }
+
+        async function gradeEsaiAI(question, answer, reference, apiKey) {
+            if (!apiKey || apiKey.trim() === "") {
+                return { 
+                    score: answer.length > 50 ? 95 : 65, 
+                    feedback: "[Mode Offline] API Key AI belum aktif, nilai digenerate acak berdasarkan panjang teks." 
+                };
+            }
+
+            const cleanKey = apiKey.trim();
             const prompt = `Koreksi jawaban essay siswa SD.
 Soal: "${question}"
 Kunci Jawaban Guru: "${reference}"
 Jawaban Siswa: "${answer}"
 Aturan: Berikan nilai objektif (0-100) dan masukan (feedback) 1-2 kalimat dengan bahasa yang menyemangati.
 Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
+            
             try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-                    method: "POST", headers: { "Content-Type": "application/json" },
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cleanKey}`, {
+                    method: "POST", 
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2 } })
                 });
+
+                if (!res.ok) {
+                    throw new Error(`HTTP Error ${res.status}`);
+                }
+
                 const data = await res.json();
                 let rawText = data.candidates[0].content.parts[0].text;
                 rawText = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
                 return JSON.parse(rawText);
             } catch (e) {
-                return { score: 0, feedback: "Koreksi otomatis gagal terhubung ke AI." };
+                return { score: 0, feedback: "Koreksi otomatis gagal terhubung ke AI. Coba lagi nanti." };
             }
         }
+
+        // ============================================================================
+        // KOMPONEN UI DASAR
+        // ============================================================================
 
         function StrengthBadge({ level }) {
             const meta = STRENGTH_META[level] || STRENGTH_META.orange;
@@ -416,22 +435,25 @@ Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
             );
         }
 
-        // KOMPONEN PENGATURAN SISTEM (YANG SEBELUMNYA HILANG)
-        // KOMPONEN PENGATURAN SISTEM
+        // ============================================================================
+        // TAMPILAN PENGATURAN SISTEM (GURU)
+        // ============================================================================
+
         function SystemSettingsView({ showToast }) {
             const [localSet, setLocalSet] = useState({ studentPassword: "belajar", lmsPassword: "belajar", geminiApiKey: "" });
             
             useEffect(() => {
-                storeGet("settings", { studentPassword: "belajar", lmsPassword: "belajar", geminiApiKey: "" })
+                storeGet("sys-settings", { studentPassword: "belajar", lmsPassword: "belajar", geminiApiKey: "" })
                     .then(s => setLocalSet(s));
             }, []);
 
             const save = async () => {
+                // Membersihkan spasi sebelum disimpan
                 const cleanedSettings = {
                     ...localSet,
                     geminiApiKey: (localSet.geminiApiKey || "").trim()
                 };
-                await storeSet("settings", cleanedSettings);
+                await storeSet("sys-settings", cleanedSettings);
                 setLocalSet(cleanedSettings);
                 showToast("Pengaturan sistem & Kunci API berhasil diperbarui.");
             };
@@ -444,7 +466,9 @@ Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
                     </div>
 
                     <Card className="mb-8 border-t-4" style={{ borderTopColor: C.emerald }}>
-                        <h3 className="text-base font-bold mb-5 flex items-center gap-2" style={{ color: C.ink }}><Brain size={18} style={{ color: C.emerald }}/> Kunci Akses Google Gemini (AI)</h3>
+                        <h3 className="text-base font-bold mb-5 flex items-center gap-2" style={{ color: C.ink }}>
+                            <Brain size={18} style={{ color: C.emerald }}/> Kunci Akses Google Gemini (AI)
+                        </h3>
                         <div>
                             <label className="text-xs font-bold mb-2 block uppercase tracking-wide" style={{ color: C.inkSoft }}>API Key Gemini 1.5 Flash</label>
                             <input 
@@ -460,7 +484,9 @@ Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
                     </Card>
 
                     <Card className="mb-8 border-t-4" style={{ borderTopColor: C.emerald }}>
-                        <h3 className="text-base font-bold mb-5 flex items-center gap-2" style={{ color: C.ink }}><Settings size={18} style={{ color: C.emerald }}/> Kunci Keamanan Akses</h3>
+                        <h3 className="text-base font-bold mb-5 flex items-center gap-2" style={{ color: C.ink }}>
+                            <Settings size={18} style={{ color: C.emerald }}/> Kunci Keamanan Akses
+                        </h3>
                         <div className="grid sm:grid-cols-2 gap-6">
                             <div>
                                 <label className="text-xs font-bold mb-2 block uppercase tracking-wide" style={{ color: C.inkSoft }}>Sandi Login Portal Siswa</label>
@@ -482,7 +508,10 @@ Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
             );
         }
 
-        // FUNGSI CHAT YANG SEBELUMNYA KEPALANYA TERHAPUS
+        // ============================================================================
+        // TAMPILAN RUANG DISKUSI SISWA (CHAT)
+        // ============================================================================
+
         function ChatMessageItem({ msg, onVote, onBookmark }) {
             const [quranData, setQuranData] = useState(null);
             const [quranLoading, setQuranLoading] = useState(false);
@@ -587,102 +616,6 @@ Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
             );
         }
 
-            return (
-                <div className="flex justify-start rise-in mb-5">
-                    <div className="max-w-[92%] w-full rounded-2xl rounded-tl-sm p-4 border shadow-sm" style={{ background: C.surface, borderColor: C.border }}>
-                        <div className="text-sm font-semibold pb-2.5 border-b" style={{ color: C.ink, borderColor: C.borderSoft }}>{msg.data.shortAnswer}</div>
-                        {msg.data.explanation && <p className="text-sm mt-3 leading-relaxed" style={{ color: C.inkSoft }}>{msg.data.explanation}</p>}
-                        
-                        {msg.data.thinkPrompt && (
-                            <div className="mt-3.5 rounded-lg p-3.5 flex items-start gap-3 border" style={{ background: C.goldBg, borderColor: "#F2DFB3" }}>
-                                <Brain size={16} className="shrink-0 mt-0.5" style={{ color: C.goldDeep }} />
-                                <div>
-                                    <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: C.goldDeep }}>Pertanyaan Pemantik</p>
-                                    <p className="text-xs mt-0.5 font-medium leading-relaxed" style={{ color: "#563C0D" }}>{msg.data.thinkPrompt}</p>
-                                </div>
-                            </div>
-                        )}
-                        
-                        {msg.data.sources?.length > 0 && (
-                            <div className="mt-4 rounded-lg overflow-hidden border" style={{ borderColor: C.borderSoft }}>
-                                <div className="px-3.5 py-2 flex justify-between bg-gray-50 border-b" style={{ borderColor: C.borderSoft }}>
-                                    <div className="flex items-center gap-2"><BookMarked size={13} style={{ color: C.emerald }}/><span className="text-[11px] font-bold uppercase" style={{ color: C.emerald }}>Verifikasi Rujukan</span></div>
-                                    <StrengthBadge level={msg.data.sourceStrength} />
-                                </div>
-                                <div className="p-3.5 space-y-2.5 bg-white">
-                                    {msg.data.sources.map((s, idx) => (
-                                        <div key={idx} className="flex gap-2.5 text-xs">
-                                            <span className="text-base leading-none">{s.icon}</span>
-                                            <div><p className="font-semibold text-gray-800">{s.label}</p><p className="text-[11px] text-gray-500">{s.detail}</p></div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="flex items-center gap-1 mt-4 pt-3 border-t" style={{ borderColor: C.borderSoft }}>
-                            <button onClick={() => onVote(msg.id, "up")} className="p-1.5 rounded-md hover:bg-gray-100 flex gap-1" style={{ color: msg.vote === "up" ? C.green : C.inkFaint }}><ThumbsUp size={14} /></button>
-                            <button onClick={() => onVote(msg.id, "down")} className="p-1.5 rounded-md hover:bg-gray-100 flex gap-1" style={{ color: msg.vote === "down" ? C.red : C.inkFaint }}><ThumbsDown size={14} /></button>
-                            <button onClick={() => onBookmark(msg)} className="p-1.5 rounded-md hover:bg-gray-100 ml-2" style={{ color: msg.bookmarked ? C.gold : C.inkFaint }}><Bookmark size={14} fill={msg.bookmarked ? C.gold : "none"} /></button>
-                            <button onClick={fetchQuran} className="p-1.5 rounded-md hover:bg-emerald-50 ml-2 flex items-center gap-1.5 text-xs font-semibold border transition-colors" style={{ borderColor: C.border, color: quranData ? C.emerald : C.inkSoft }}>
-                                <BookOpen size={14} /> Relevansi Ayat
-                            </button>
-                        </div>
-
-                        {quranLoading && <div className="mt-3 text-xs flex items-center gap-2 text-emerald-700"><Loader2 size={14} className="animate-spin"/> Menarik data API Al-Qur'an...</div>}
-                        {quranData && !quranData.error && (
-                            <div className="mt-3 p-4 rounded-xl border bg-white rise-in" style={{ borderColor: C.borderSoft }}>
-                                <span className="text-xs font-bold uppercase tracking-wider text-gold-700 block mb-2" style={{ color: C.goldDeep }}>QS. {quranData.surahName} : {quranData.ayahNumber}</span>
-                                <p className="font-arabic text-xl text-right leading-loose text-gray-800" dir="rtl">{quranData.arabic}</p>
-                                <p className="text-xs leading-relaxed italic border-l-2 pl-3 py-1 mt-3" style={{ borderColor: C.gold, color: C.inkSoft }}>"{quranData.translation}"</p>
-                                <div className="pt-2 mt-3 border-t flex justify-between items-center" style={{ borderColor: C.borderSoft }}>
-                                    <span className="text-[10px] text-gray-400">Teks Kemenag RI via alquran.cloud</span>
-                                    <a href={`https://quran.kemenag.go.id/surah/${quranData.surahNumber}`} target="_blank" rel="noreferrer" className="text-[11px] font-bold flex items-center gap-1 hover:underline" style={{ color: C.emeraldSecondary }}>Kaji Tafsir Kemenag <ExternalLink size={10} /></a>
-                                </div>
-                            </div>
-                        )}
-                        {quranData?.error && <div className="mt-3 text-xs text-red-500 bg-red-50 p-2 rounded">{quranData.error}</div>}
-                    </div>
-                </div>
-            );
-        }
-
-        function StudentDashboardView({ profile, history, setView }) {
-            const lastQ = history[history.length - 1];
-            return (
-                <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-8">
-                    <div>
-                        <h2 className="font-display text-3xl font-bold tracking-tight" style={{ color: C.ink }}>Beranda Belajar</h2>
-                        <p className="text-sm mt-1" style={{ color: C.inkSoft }}>Assalamu'alaikum, <strong>{profile.name}</strong>. Selamat datang di pustaka cerdas.</p>
-                    </div>
-
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        {[
-                            { label: "Sesi Diskusi", value: history.length, icon: MessageCircle },
-                            { label: "Tingkat Kelas", value: profile.grade, icon: BookOpen },
-                            { label: "Konsistensi", value: `${Math.min(history.length + 1, 7)} Hari`, icon: Flame },
-                            { label: "Topik Aktif", value: lastQ?.subject || "-", icon: Compass },
-                        ].map((m, idx) => (
-                            <Card key={idx} className="flex flex-col justify-between hover:shadow-md">
-                                <div className="flex justify-between items-center"><span className="text-xs font-semibold uppercase text-gray-400">{m.label}</span><m.icon size={16} style={{ color: C.emerald }} /></div>
-                                <p className="font-display text-2xl font-bold mt-4" style={{ color: C.ink }}>{m.value}</p>
-                            </Card>
-                        ))}
-                    </div>
-
-                    <div className="rounded-2xl p-7 md:p-8 relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm" style={{ background: C.emerald }}>
-                        <div className="absolute -right-6 -bottom-6 opacity-10 pointer-events-none"><ArchitecturalMotif size={240} color="#FFFFFF" opacity={1} /></div>
-                        <div className="relative z-10 text-white max-w-xl">
-                            <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold mb-3 bg-white/20"><Sparkles size={12} style={{ color: C.gold }} /> Tutor Berbasis Kurikulum</div>
-                            <h3 className="font-display text-2xl font-bold">Punya pertanyaan seputar materi sekolah?</h3>
-                            <p className="text-sm mt-2 opacity-90">IQRA' AI siap membantu menjawab berdasarkan buku panduan guru kelas {profile.grade}.</p>
-                        </div>
-                        <button onClick={() => setView("ask")} className="relative z-10 rounded-xl px-5 py-3 text-sm font-bold shadow-md hover:brightness-110" style={{ background: C.gold, color: "#2B2108" }}>Mulai Sesi Tanya Jawab</button>
-                    </div>
-                </div>
-            );
-        }
-
         function AskIqraView({ profile, documents, onNewExchange, showToast }) {
             const [mode, setMode] = useState("jelaskan");
             const [subject, setSubject] = useState(SUBJECTS[2]);
@@ -745,7 +678,12 @@ Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
                                 <h3 className="font-bold text-lg mb-4 text-gray-800">Fungsi Mode Belajar</h3>
                                 <ul className="space-y-3 text-sm">
                                     {MODES.map(m => (
-                                        <li key={m.id} className="flex gap-3"><m.icon size={18} className="text-emerald-700 shrink-0"/><div><strong className="text-gray-800">{m.label}:</strong> <span className="text-gray-600">{m.desc}</span></div></li>
+                                        <li key={m.id} className="flex gap-3">
+                                            <m.icon size={18} className="text-emerald-700 shrink-0"/>
+                                            <div>
+                                                <strong className="text-gray-800">{m.label}:</strong> <span className="text-gray-600">{m.desc}</span>
+                                            </div>
+                                        </li>
                                     ))}
                                 </ul>
                                 <button onClick={() => setShowModeInfo(false)} className="mt-6 w-full py-2 bg-emerald-700 text-white rounded-lg font-bold">Mengerti</button>
@@ -780,6 +718,53 @@ Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
             );
         }
 
+        // ============================================================================
+        // TAMPILAN SISWA (LAINNYA)
+        // ============================================================================
+
+        function StudentDashboardView({ profile, history, setView }) {
+            const lastQ = history[history.length - 1];
+            return (
+                <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-8">
+                    <div>
+                        <h2 className="font-display text-3xl font-bold tracking-tight" style={{ color: C.ink }}>Beranda Belajar</h2>
+                        <p className="text-sm mt-1" style={{ color: C.inkSoft }}>Assalamu'alaikum, <strong>{profile.name}</strong>. Selamat datang di pustaka cerdas.</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        {[
+                            { label: "Sesi Diskusi", value: history.length, icon: MessageCircle },
+                            { label: "Tingkat Kelas", value: profile.grade, icon: BookOpen },
+                            { label: "Konsistensi", value: `${Math.min(history.length + 1, 7)} Hari`, icon: Flame },
+                            { label: "Topik Aktif", value: lastQ?.subject || "-", icon: Compass },
+                        ].map((m, idx) => (
+                            <Card key={idx} className="flex flex-col justify-between hover:shadow-md">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-semibold uppercase text-gray-400">{m.label}</span>
+                                    <m.icon size={16} style={{ color: C.emerald }} />
+                                </div>
+                                <p className="font-display text-2xl font-bold mt-4" style={{ color: C.ink }}>{m.value}</p>
+                            </Card>
+                        ))}
+                    </div>
+
+                    <div className="rounded-2xl p-7 md:p-8 relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm" style={{ background: C.emerald }}>
+                        <div className="absolute -right-6 -bottom-6 opacity-10 pointer-events-none"><ArchitecturalMotif size={240} color="#FFFFFF" opacity={1} /></div>
+                        <div className="relative z-10 text-white max-w-xl">
+                            <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold mb-3 bg-white/20">
+                                <Sparkles size={12} style={{ color: C.gold }} /> Tutor Berbasis Kurikulum
+                            </div>
+                            <h3 className="font-display text-2xl font-bold">Punya pertanyaan seputar materi sekolah?</h3>
+                            <p className="text-sm mt-2 opacity-90">IQRA' AI siap membantu menjawab berdasarkan buku panduan guru kelas {profile.grade}.</p>
+                        </div>
+                        <button onClick={() => setView("ask")} className="relative z-10 rounded-xl px-5 py-3 text-sm font-bold shadow-md hover:brightness-110" style={{ background: C.gold, color: "#2B2108" }}>
+                            Mulai Sesi Tanya Jawab
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
         function UjiPemahamanView({ profile, assignments, submissions, setSubmissions, showToast }) {
             const [selectedTask, setSelectedTask] = useState(null);
             const [answer, setAnswer] = useState("");
@@ -788,11 +773,19 @@ Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
 
             const submitAnswer = async () => {
                 setIsGrading(true);
-                const settings = await storeGet("sys-settings", { apiKey: "" });
+                const settings = await storeGet("sys-settings", { geminiApiKey: "" });
                 
-                const result = await gradeEsaiAI(selectedTask.question, answer, selectedTask.reference, settings.apiKey);
+                const result = await gradeEsaiAI(selectedTask.question, answer, selectedTask.reference, settings.geminiApiKey);
                 
-                const newSub = { id: crypto.randomUUID(), assignmentId: selectedTask.id, studentName: profile.name, answer, score: result.score, feedback: result.feedback, date: new Date().toISOString() };
+                const newSub = { 
+                    id: crypto.randomUUID(), 
+                    assignmentId: selectedTask.id, 
+                    studentName: profile.name, 
+                    answer, 
+                    score: result.score, 
+                    feedback: result.feedback, 
+                    date: new Date().toISOString() 
+                };
                 const updated = [newSub, ...submissions];
                 
                 setSubmissions(updated);
@@ -812,7 +805,10 @@ Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
                             const sub = submissions.find(s => s.assignmentId === asm.id && s.studentName === profile.name);
                             return (
                                 <Card key={asm.id}>
-                                    <div className="flex justify-between mb-2"><span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{asm.subject}</span>{sub ? <span className="text-xs text-green-600 font-bold flex gap-1 items-center"><CheckCircle size={14}/> Selesai</span> : <span className="text-xs text-orange-500 font-bold">Tugas Aktif</span>}</div>
+                                    <div className="flex justify-between mb-2">
+                                        <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{asm.subject}</span>
+                                        {sub ? <span className="text-xs text-green-600 font-bold flex gap-1 items-center"><CheckCircle size={14}/> Selesai</span> : <span className="text-xs text-orange-500 font-bold">Tugas Aktif</span>}
+                                    </div>
                                     <h3 className="font-bold text-gray-800">{asm.title}</h3>
                                     <p className="text-xs text-gray-600 mt-1">{asm.question}</p>
                                     {sub ? (
@@ -821,7 +817,9 @@ Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
                                             <p className="text-xs text-green-700 italic">"{sub.feedback}"</p>
                                         </div>
                                     ) : (
-                                        <button onClick={() => setSelectedTask(asm)} className="mt-4 w-full py-2 bg-emerald-800 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors">Kerjakan Sekarang</button>
+                                        <button onClick={() => setSelectedTask(asm)} className="mt-4 w-full py-2 bg-emerald-800 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors">
+                                            Kerjakan Sekarang
+                                        </button>
                                     )}
                                 </Card>
                             )
@@ -832,7 +830,10 @@ Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
                     {selectedTask && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
                             <div className="bg-white w-full max-w-xl rounded-2xl flex flex-col max-h-[90vh] shadow-xl rise-in">
-                                <div className="p-4 border-b flex justify-between bg-gray-50 rounded-t-2xl"><h3 className="font-bold text-sm text-gray-800">Lembar Jawab</h3><button onClick={() => !isGrading && setSelectedTask(null)} className="text-gray-500 hover:text-gray-800"><X size={16}/></button></div>
+                                <div className="p-4 border-b flex justify-between bg-gray-50 rounded-t-2xl">
+                                    <h3 className="font-bold text-sm text-gray-800">Lembar Jawab</h3>
+                                    <button onClick={() => !isGrading && setSelectedTask(null)} className="text-gray-500 hover:text-gray-800"><X size={16}/></button>
+                                </div>
                                 <div className="p-4 overflow-y-auto">
                                     <div className="bg-orange-50 p-3 rounded-xl mb-4 text-sm text-orange-900 border border-orange-100 shadow-inner">{selectedTask.question}</div>
                                     <textarea rows={6} value={answer} onChange={e => setAnswer(e.target.value)} disabled={isGrading} placeholder="Ketik jawaban uraianmu..." className="w-full border rounded-xl p-3 text-sm focus:ring-1 focus:ring-emerald-500 outline-none text-gray-800"/>
@@ -876,7 +877,16 @@ Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
                     <h2 className="font-display text-3xl font-bold text-gray-800">Riwayat Belajar</h2>
                     <div className="space-y-4">
                         {history.slice().reverse().map((h, i) => (
-                            <Card key={i}><div className="flex justify-between items-start"><div><p className="text-xs text-gray-400 mb-1">{h.subject}</p><p className="font-bold text-sm text-gray-800">{h.question}</p><p className="text-xs mt-2 text-gray-600 line-clamp-2">{h.data.shortAnswer}</p></div><StrengthBadge level={h.data.sourceStrength}/></div></Card>
+                            <Card key={i}>
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <p className="text-xs text-gray-400 mb-1">{h.subject}</p>
+                                        <p className="font-bold text-sm text-gray-800">{h.question}</p>
+                                        <p className="text-xs mt-2 text-gray-600 line-clamp-2">{h.data.shortAnswer}</p>
+                                    </div>
+                                    <StrengthBadge level={h.data.sourceStrength}/>
+                                </div>
+                            </Card>
                         ))}
                     </div>
                 </div>
@@ -982,6 +992,10 @@ Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
             );
         }
 
+        // ============================================================================
+        // TAMPILAN DASHBOARD GURU
+        // ============================================================================
+
         function TeacherDashboardView({ documents, topicFreq }) {
             const top = Object.entries(topicFreq).sort((a,b)=>b[1]-a[1]).slice(0,3);
             return (
@@ -1014,7 +1028,7 @@ Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
                 if (!file) return;
                 setIsExtracting(true);
                 setTimeout(() => {
-                    setForm({ ...form, title: file.name.split('.')[0], content: `[Teks hasil ekstraksi otomatis dari dokumen ${file.name}]\n\nDokumen ini berisi rangkuman materi pokok yang diurai oleh AI untuk dibaca sebagai rujukan utama sistem saat menjawab siswa.` });
+                    setForm({ ...form, title: file.name.split('.')[0], content: `[Teks ekstraksi dari dokumen ${file.name}]\n\nDokumen ini berisi rangkuman materi pokok yang diurai oleh AI untuk dibaca sebagai rujukan.` });
                     setIsExtracting(false);
                     showToast("Teks berhasil diekstrak dari dokumen.");
                 }, 1500);
@@ -1118,6 +1132,7 @@ Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
                 setAssignments(updated); await storeSet("assignments", updated);
                 setForm({ title: "", subject: SUBJECTS[0], grade: 5, question: "", reference: "" }); setShowForm(false); showToast("Tugas dipublikasikan.");
             }
+            
             const deleteAsm = async (id) => {
                 const updated = assignments.filter(a => a.id !== id);
                 setAssignments(updated); await storeSet("assignments", updated); showToast("Tugas dihapus.");
@@ -1309,7 +1324,7 @@ Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
                 { id: "tugas", label: "Kelola Tugas LMS", icon: ClipboardCheck },
                 { id: "domain", label: "Domain Rujukan", icon: Globe },
                 { id: "filosofi", label: "Filosofi", icon: Info },
-                { id: "settings", label: "Pengaturan Sistem", icon: Settings }, // Pastikan ini ada
+                { id: "settings", label: "Pengaturan Sistem", icon: Settings },
             ]
         };
 
@@ -1403,7 +1418,7 @@ Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
                         case "tugas": return <TeacherTugasView assignments={assignments} setAssignments={setAssignments} submissions={submissions} showToast={showToast} />;
                         case "domain": return <TeacherDomainView sources={trustedSources} setSources={setTrustedSources} showToast={showToast} />;
                         case "filosofi": return <FilosofiView />;
-                        case "settings": return <SystemSettingsView showToast={showToast} />; // DULU INI KOSONG DI KODE ANDA
+                        case "settings": return <SystemSettingsView showToast={showToast} />;
                         default: return <TeacherModulView documents={documents} setDocuments={setDocuments} profile={profile} showToast={showToast} />;
                     }
                 }
