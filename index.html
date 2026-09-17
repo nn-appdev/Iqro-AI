@@ -171,6 +171,7 @@
         // --- SISTEM AI UTAMA ---
         // --- SISTEM AI UTAMA (PIVOT KE GROQ / LLAMA 3) ---
         // --- SISTEM AI UTAMA (PIVOT KE GROQ / LLAMA 3.1) ---
+        // --- SISTEM AI UTAMA (GROQ MIXTRAL) ---
         async function generateEducationalResponse({ question, mode, grade, subject, teacherDocs }) {
             const settings = await storeGet("sys-settings", { geminiApiKey: "" });
             const hasDoc = teacherDocs.length > 0;
@@ -188,8 +189,10 @@
             }
 
             const cleanKey = settings.geminiApiKey.trim();
+            
+            // Logika Penyambungan Perpustakaan Guru
             let contextText = hasDoc 
-                ? `Materi Referensi (WAJIB ACUAN): Judul: ${primaryDoc.title}, Bab: ${primaryDoc.chapter}\nIsi: ${primaryDoc.content}` 
+                ? `Materi Referensi (WAJIB JADI ACUAN UTAMA): Judul: ${primaryDoc.title}, Bab: ${primaryDoc.chapter}\nIsi: ${primaryDoc.content}` 
                 : "Tidak ada rujukan guru. Gunakan kurikulum SD standar Indonesia.";
 
             const systemPrompt = `Kamu adalah IQRA' AI untuk SD Kelas ${grade} mapel ${subject}.
@@ -199,12 +202,13 @@ Aturan:
 - jelaskan: Jawaban langsung.
 - detektif: Beri 1 petunjuk awal, wajib beri "thinkPrompt". Jangan beri jawaban langsung.
 - aha: Gunakan analogi unik / pemecahan masalah (HOTS).
-- buku: Jawab HANYA dari Materi Referensi. Jika tidak ada di referensi, tolak halus.
+- buku: Jawab HANYA dari Materi Referensi. Jika tidak ada, tolak halus.
 
-WAJIB kembalikan JSON persis format ini:
-{"shortAnswer": "kesimpulan 1-2 kalimat", "explanation": "penjelasan detail", "thinkPrompt": "pertanyaan pancingan nalar atau null", "sourceStrength": "green/yellow/orange/red"}`;
+WAJIB kembalikan output HANYA format JSON persis seperti ini:
+{"shortAnswer": "kesimpulan 1-2 kalimat", "explanation": "penjelasan detail", "thinkPrompt": "pertanyaan pancingan atau null", "sourceStrength": "green/yellow/orange/red"}`;
 
             try {
+                // MENEMBAK API GROQ DENGAN MODEL MIXTRAL
                 const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { 
@@ -212,7 +216,7 @@ WAJIB kembalikan JSON persis format ini:
                         "Content-Type": "application/json" 
                     },
                     body: JSON.stringify({ 
-                        model: "llama-3.1-8b-instant", // <-- PERUBAHAN VERSI MODEL KE 3.1
+                        model: "mixtral-8x7b-32768", // Model universal yang stabil dan pasti ada
                         messages: [
                             { role: "system", content: systemPrompt },
                             { role: "user", content: question }
@@ -236,6 +240,7 @@ WAJIB kembalikan JSON persis format ini:
                     shortAnswer: parsed.shortAnswer || "Gagal merangkum.",
                     explanation: parsed.explanation || "",
                     thinkPrompt: parsed.thinkPrompt || null,
+                    // Di sini perpustakaan dimunculkan saat sukses
                     sources: hasDoc ? [{ icon: "📘", label: primaryDoc.title, detail: `Bab: ${primaryDoc.chapter}` }] : [],
                     sourceStrength: parsed.sourceStrength || (hasDoc ? "green" : "yellow")
                 };
@@ -243,8 +248,10 @@ WAJIB kembalikan JSON persis format ini:
                 return {
                     shortAnswer: "Akses ditolak oleh server Groq.",
                     explanation: `ALASAN SERVER: "${error.message}"`,
-                    thinkPrompt: "Periksa Pengaturan Sistem. Pastikan Kunci API Groq (gsk_...) Anda dimasukkan dengan benar.",
-                    sources: [], sourceStrength: "red"
+                    thinkPrompt: "Silakan periksa kembali Kunci API Anda.",
+                    // Bukti bahwa perpustakaan nyambung meski server AI mati
+                    sources: hasDoc ? [{ icon: "📘", label: primaryDoc.title, detail: `Bab: ${primaryDoc.chapter}` }] : [], 
+                    sourceStrength: "red"
                 };
             }
         }
@@ -259,7 +266,7 @@ WAJIB kembalikan JSON persis format ini:
 Soal: "${question}"
 Kunci Jawaban Guru: "${reference}"
 
-WAJIB Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
+WAJIB Jawab dengan JSON: {"score": 85, "feedback": "masukan ramah"}`;
             
             try {
                 const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -269,7 +276,7 @@ WAJIB Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
                         "Content-Type": "application/json" 
                     },
                     body: JSON.stringify({ 
-                        model: "llama-3.1-8b-instant", // <-- PERUBAHAN VERSI MODEL KE 3.1
+                        model: "mixtral-8x7b-32768", // Model universal
                         messages: [
                             { role: "system", content: systemPrompt },
                             { role: "user", content: `Jawaban Siswa: "${answer}"` }
