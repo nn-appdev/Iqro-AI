@@ -166,26 +166,28 @@
 
         // INJEKSI KECERDASAN GEMINI 
         async function generateEducationalResponse({ question, mode, grade, subject, teacherDocs }) {
-            const settings = await storeGet("sys-settings", { apiKey: "" });
-            const hasDoc = teacherDocs.length > 0;
-            const primaryDoc = hasDoc ? teacherDocs[0] : null;
+    // Mengambil API Key dari Local Storage
+    const settings = await storeGet("settings", { geminiApiKey: "" });
+    const hasDoc = teacherDocs.length > 0;
+    const primaryDoc = hasDoc ? teacherDocs[0] : null;
 
-            if (!settings.apiKey) {
-                // Fallback Logika Simulasi Awal Jika Kunci Belum Ada
-                await new Promise(resolve => setTimeout(resolve, 800));
-                return {
-                    shortAnswer: `Sistem AI terbatas karena Guru belum memasukkan API Key.`,
-                    explanation: hasDoc ? `Dokumen terdeteksi: ${primaryDoc.title}. Namun AI gagal memprosesnya.` : `Sistem tidak dapat menghasilkan analisis otomatis.`,
-                    thinkPrompt: `Silakan hubungi Guru Anda untuk mengaktifkan kecerdasan buatan.`,
-                    sources: hasDoc ? [{ icon: "📘", label: primaryDoc.title, detail: `Bab: ${primaryDoc.chapter}` }] : [],
-                    sourceStrength: hasDoc ? "green" : "red",
-                    note: "Kunci API Gemini Hilang"
-                };
-            }
+    if (!settings.geminiApiKey || settings.geminiApiKey.trim() === "") {
+        await new Promise(resolve => setTimeout(resolve, 800)); // Delay simulasi
+        return {
+            shortAnswer: `Sistem AI terbatas karena Guru belum memasukkan API Key.`,
+            explanation: hasDoc ? `Dokumen terdeteksi: ${primaryDoc.title}. Namun AI gagal memprosesnya karena kunci akses belum ada.` : `Sistem tidak dapat menghasilkan analisis otomatis.`,
+            thinkPrompt: `Silakan hubungi Guru Anda untuk mengaktifkan kecerdasan buatan.`,
+            sources: hasDoc ? [{ icon: "📘", label: primaryDoc.title, detail: `Bab: ${primaryDoc.chapter}` }] : [],
+            sourceStrength: "red",
+            note: "Kunci API Gemini Kosong"
+        };
+    }
 
-            let contextText = hasDoc ? `Materi Referensi (WAJIB JADIKAN ACUAN): Judul: ${primaryDoc.title}, Bab: ${primaryDoc.chapter}\nIsi: ${primaryDoc.content}` : "Tidak ada referensi spesifik dari guru. Gunakan kurikulum SD standar.";
+    // Pembersihan spasi otomatis pada Kunci API
+    const cleanKey = settings.geminiApiKey.trim();
+    let contextText = hasDoc ? `Materi Referensi (WAJIB ACUAN): Judul: ${primaryDoc.title}, Bab: ${primaryDoc.chapter}\nIsi: ${primaryDoc.content}` : "Tidak ada rujukan guru. Gunakan kurikulum SD standar Indonesia.";
 
-            const prompt = `Kamu IQRA' AI untuk SD Kelas ${grade} mapel ${subject}.
+    const prompt = `Kamu IQRA' AI untuk SD Kelas ${grade} mapel ${subject}.
 Konteks: ${contextText}
 Tanya: "${question}"
 Mode Belajar: "${mode}"
@@ -195,41 +197,51 @@ Aturan:
 - aha: Gunakan analogi unik / pemecahan masalah (HOTS).
 - buku: Jawab HANYA dari Materi Referensi. Jika tidak ada di referensi, tolak halus.
 
-Jawab HANYA dalam JSON valid:
-{"shortAnswer": "kesimpulan 1-2 kalimat", "explanation": "penjelasan detail", "thinkPrompt": "pertanyaan pancingan nalar (bisa null)", "sourceStrength": "green/yellow/orange/red"}`;
+Jawab HANYA dalam JSON valid tanpa block markdown:
+{"shortAnswer": "kesimpulan 1-2 kalimat", "explanation": "penjelasan detail", "thinkPrompt": "pertanyaan pancingan nalar", "sourceStrength": "green/yellow/orange/red"}`;
 
+    try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cleanKey}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3 } })
+        });
+        
+        // Memaksa error mentah dari server Google keluar jika gagal
+        if (!res.ok) {
+            let errorDetails = `HTTP Error ${res.status}`;
             try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${settings.apiKey}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3 } })
-                });
-                
-                if (!res.ok) throw new Error("Gagal Koneksi API");
-                const data = await res.json();
-                let rawText = data.candidates[0].content.parts[0].text;
-                rawText = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
-                const parsed = JSON.parse(rawText);
-
-                return {
-                    shortAnswer: parsed.shortAnswer || "Gagal merangkum.",
-                    explanation: parsed.explanation || "",
-                    thinkPrompt: parsed.thinkPrompt || null,
-                    sources: hasDoc ? [{ icon: "📘", label: primaryDoc.title, detail: `Bab: ${primaryDoc.chapter}` }] : [],
-                    sourceStrength: parsed.sourceStrength || (hasDoc ? "green" : "yellow"),
-                    note: hasDoc ? null : "Jawaban dihasilkan dari basis data AI umum."
-                };
-            } catch (error) {
-                return {
-                    shortAnswer: "Terjadi kesalahan koneksi ke server AI.",
-                    explanation: "Periksa kembali kuota atau validitas API Key Gemini Anda.",
-                    thinkPrompt: null,
-                    sources: [],
-                    sourceStrength: "red",
-                    note: "Error AI Parsing"
-                };
-            }
+                const errData = await res.json();
+                errorDetails = errData.error?.message || errorDetails;
+            } catch(e) {}
+            throw new Error(errorDetails);
         }
+        
+        const data = await res.json();
+        let rawText = data.candidates[0].content.parts[0].text;
+        rawText = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
+        const parsed = JSON.parse(rawText);
+
+        return {
+            shortAnswer: parsed.shortAnswer || "Gagal merangkum.",
+            explanation: parsed.explanation || "",
+            thinkPrompt: parsed.thinkPrompt || null,
+            sources: hasDoc ? [{ icon: "📘", label: primaryDoc.title, detail: `Bab: ${primaryDoc.chapter}` }] : [],
+            sourceStrength: parsed.sourceStrength || (hasDoc ? "green" : "yellow"),
+            note: hasDoc ? null : "Berdasarkan AI umum."
+        };
+    } catch (error) {
+        // Mencetak error langsung ke layar siswa agar tidak perlu menebak-nebak
+        return {
+            shortAnswer: "Akses ditolak oleh server Google.",
+            explanation: `ALASAN DARI GOOGLE: "${error.message}"`,
+            thinkPrompt: "Tolong periksa menu Pengaturan Sistem. Pastikan Kunci API baru Anda dimasukkan tanpa ada spasi ekstra.",
+            sources: [],
+            sourceStrength: "red",
+            note: "API Error Terdeteksi"
+        };
+    }
+}
 
         // INJEKSI KOREKSI LMS GEMINI
         async function gradeEsaiAI(question, answer, reference, apiKey) {
@@ -406,81 +418,69 @@ Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
 
         // KOMPONEN PENGATURAN SISTEM (YANG SEBELUMNYA HILANG)
         function SystemSettingsView({ showToast }) {
-            const [apiKey, setApiKey] = useState("");
-            
-            useEffect(() => {
-                storeGet("sys-settings", { apiKey: "" }).then(s => setApiKey(s.apiKey));
-            }, []);
+    const [localSet, setLocalSet] = useState({ studentPassword: "belajar", lmsPassword: "belajar", geminiApiKey: "" });
+    
+    useEffect(() => {
+        storeGet("settings", { studentPassword: "belajar", lmsPassword: "belajar", geminiApiKey: "" })
+            .then(s => setLocalSet(s));
+    }, []);
 
-            const handleSave = async () => {
-                await storeSet("sys-settings", { apiKey });
-                showToast("Kunci API Gemini berhasil disimpan!");
-            };
+    const save = async () => {
+        // Membersihkan spasi sebelum disimpan
+        const cleanedSettings = {
+            ...localSet,
+            geminiApiKey: (localSet.geminiApiKey || "").trim()
+        };
+        await storeSet("settings", cleanedSettings);
+        setLocalSet(cleanedSettings);
+        showToast("Pengaturan sistem & Kunci API berhasil diperbarui.");
+    };
 
-            return (
-                <div className="p-6 md:p-8 max-w-4xl mx-auto space-y-6">
-                    <div>
-                        <h2 className="font-display text-3xl font-bold text-gray-800">Pengaturan Sistem</h2>
-                        <p className="text-sm text-gray-500 mt-1">Konfigurasi arsitektur kecerdasan buatan.</p>
-                    </div>
-                    <Card className="border-l-4 border-emerald-700">
-                        <div className="flex items-center gap-3 mb-4">
-                            <Brain className="text-emerald-700" />
-                            <h3 className="font-bold text-gray-800">Kunci API Google Gemini (AI)</h3>
-                        </div>
-                        <p className="text-xs text-gray-600 mb-4 leading-relaxed">Masukkan API Key agar fitur obrolan cerdas dan koreksi otomatis LMS dapat beroperasi. Data kunci hanya disimpan secara lokal di memori browser Anda.</p>
-                        <div className="flex gap-3">
-                            <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="Paste API Key (AIzaSy...)" className="flex-1 rounded-lg px-3.5 py-2 text-sm outline-none border focus:border-emerald-600 bg-gray-50 text-gray-800" />
-                            <button onClick={handleSave} className="px-5 py-2 bg-emerald-800 text-white rounded-lg text-sm font-bold shadow-sm hover:bg-emerald-700">Simpan Key</button>
-                        </div>
-                    </Card>
+    return (
+        <div className="p-6 md:p-10 max-w-4xl mx-auto pb-24">
+            <div className="mb-8">
+                <h2 className="font-display text-3xl font-bold" style={{ color: C.emerald }}>Pengaturan Sistem</h2>
+                <p className="text-sm font-medium mt-1" style={{ color: C.inkSoft }}>Kelola keamanan dan kecerdasan buatan portal.</p>
+            </div>
+
+            <Card className="mb-8 border-t-4" style={{ borderTopColor: C.emerald }}>
+                <h3 className="text-base font-bold mb-5 flex items-center gap-2" style={{ color: C.ink }}><Brain size={18} style={{ color: C.emerald }}/> Kunci Akses Google Gemini (AI)</h3>
+                <div>
+                    <label className="text-xs font-bold mb-2 block uppercase tracking-wide" style={{ color: C.inkSoft }}>API Key Gemini 1.5 Flash</label>
+                    <input 
+                        type="password"
+                        value={localSet.geminiApiKey} 
+                        onChange={e => setLocalSet({...localSet, geminiApiKey: e.target.value})} 
+                        placeholder="Paste API Key di sini (AIzaSy... atau AQ...)" 
+                        className="w-full border-2 rounded-xl px-4 py-3 text-sm font-medium outline-none transition-colors" 
+                        style={{ borderColor: C.border, backgroundColor: C.bg, color: C.ink }} 
+                    />
+                    <p className="text-xs mt-2" style={{ color: C.inkFaint }}>Kunci AI akan dibersihkan dari spasi secara otomatis saat Anda menyimpannya.</p>
                 </div>
-            );
-        }
+            </Card>
 
-        function ChatMessageItem({ msg, onVote, onBookmark }) {
-            const [quranData, setQuranData] = useState(null);
-            const [quranLoading, setQuranLoading] = useState(false);
-
-            const fetchQuran = async () => {
-                if (quranData) { setQuranData(null); return; } // Toggle off
-                setQuranLoading(true);
-                try {
-                    const qLower = (msg.question || "").toLowerCase();
-                    let theme = "ilmu";
-                    if (qLower.includes("tumbuh") || qLower.includes("alam")) theme = "tumbuhan";
-                    else if (qLower.includes("hitung") || qLower.includes("pola")) theme = "menghitung";
-                    
-                    const searchRes = await fetch(`https://api.alquran.cloud/v1/search/${encodeURIComponent(theme)}/all/id.indonesian`);
-                    const searchData = await searchRes.json();
-                    const match = searchData?.data?.matches?.[0];
-
-                    if (match) {
-                        const detailRes = await fetch(`https://api.alquran.cloud/v1/ayah/${match.number}/editions/quran-uthmani,id.indonesian`);
-                        const detailData = await detailRes.json();
-                        setQuranData({
-                            surahName: match.surah.englishName, surahNumber: match.surah.number, ayahNumber: match.numberInSurah,
-                            arabic: detailData?.data?.[0]?.text || "", translation: detailData?.data?.[1]?.text || match.text,
-                        });
-                    } else {
-                        setQuranData({ error: "Tidak ada ayat khusus yang terkait secara langsung." });
-                    }
-                } catch {
-                    setQuranData({ error: "Gagal memuat API Al-Qur'an." });
-                } finally {
-                    setQuranLoading(false);
-                }
-            };
-
-            if (msg.role === "user") {
-                return (
-                    <div className="flex justify-end rise-in mb-4">
-                        <div className="max-w-[85%] rounded-2xl rounded-tr-sm px-4 py-3 text-sm text-white shadow-sm" style={{ background: C.emeraldSecondary }}>
-                            {msg.text}
-                        </div>
+            <Card className="mb-8 border-t-4" style={{ borderTopColor: C.emerald }}>
+                <h3 className="text-base font-bold mb-5 flex items-center gap-2" style={{ color: C.ink }}><Settings size={18} style={{ color: C.emerald }}/> Kunci Keamanan Akses</h3>
+                <div className="grid sm:grid-cols-2 gap-6">
+                    <div>
+                        <label className="text-xs font-bold mb-2 block uppercase tracking-wide" style={{ color: C.inkSoft }}>Sandi Login Portal Siswa</label>
+                        <input value={localSet.studentPassword} onChange={e=>setLocalSet({...localSet, studentPassword: e.target.value})} className="w-full border-2 rounded-xl px-4 py-3 text-sm font-medium outline-none" style={{ borderColor: C.border, backgroundColor: C.bg, color: C.ink }} />
                     </div>
-                );
-            }
+                    <div>
+                        <label className="text-xs font-bold mb-2 block uppercase tracking-wide" style={{ color: C.inkSoft }}>Sandi Brankas Ujian (LMS)</label>
+                        <input value={localSet.lmsPassword} onChange={e=>setLocalSet({...localSet, lmsPassword: e.target.value})} className="w-full border-2 rounded-xl px-4 py-3 text-sm font-medium outline-none" style={{ borderColor: C.border, backgroundColor: C.bg, color: C.ink }} />
+                    </div>
+                </div>
+            </Card>
+
+            <div className="flex justify-end">
+                <button onClick={save} className="text-white font-bold py-3.5 px-8 rounded-xl text-sm w-full sm:w-auto shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2" style={{ background: C.emerald }}>
+                    Simpan Pembaruan Sistem
+                </button>
+            </div>
+        </div>
+    );
+}
 
             return (
                 <div className="flex justify-start rise-in mb-5">
