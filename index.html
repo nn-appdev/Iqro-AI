@@ -170,6 +170,7 @@
         
         // --- SISTEM AI UTAMA ---
         // --- SISTEM AI UTAMA (PIVOT KE GROQ / LLAMA 3) ---
+        // --- SISTEM AI UTAMA (PIVOT KE GROQ / LLAMA 3.1) ---
         async function generateEducationalResponse({ question, mode, grade, subject, teacherDocs }) {
             const settings = await storeGet("sys-settings", { geminiApiKey: "" });
             const hasDoc = teacherDocs.length > 0;
@@ -204,7 +205,6 @@ WAJIB kembalikan JSON persis format ini:
 {"shortAnswer": "kesimpulan 1-2 kalimat", "explanation": "penjelasan detail", "thinkPrompt": "pertanyaan pancingan nalar atau null", "sourceStrength": "green/yellow/orange/red"}`;
 
             try {
-                // MENEMBAK API GROQ CLOUD
                 const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { 
@@ -212,7 +212,7 @@ WAJIB kembalikan JSON persis format ini:
                         "Content-Type": "application/json" 
                     },
                     body: JSON.stringify({ 
-                        model: "llama3-8b-8192", 
+                        model: "llama-3.1-8b-instant", // <-- PERUBAHAN VERSI MODEL KE 3.1
                         messages: [
                             { role: "system", content: systemPrompt },
                             { role: "user", content: question }
@@ -269,7 +269,7 @@ WAJIB Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
                         "Content-Type": "application/json" 
                     },
                     body: JSON.stringify({ 
-                        model: "llama3-8b-8192",
+                        model: "llama-3.1-8b-instant", // <-- PERUBAHAN VERSI MODEL KE 3.1
                         messages: [
                             { role: "system", content: systemPrompt },
                             { role: "user", content: `Jawaban Siswa: "${answer}"` }
