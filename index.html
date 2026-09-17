@@ -417,70 +417,175 @@ Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
         }
 
         // KOMPONEN PENGATURAN SISTEM (YANG SEBELUMNYA HILANG)
+        // KOMPONEN PENGATURAN SISTEM
         function SystemSettingsView({ showToast }) {
-    const [localSet, setLocalSet] = useState({ studentPassword: "belajar", lmsPassword: "belajar", geminiApiKey: "" });
-    
-    useEffect(() => {
-        storeGet("settings", { studentPassword: "belajar", lmsPassword: "belajar", geminiApiKey: "" })
-            .then(s => setLocalSet(s));
-    }, []);
+            const [localSet, setLocalSet] = useState({ studentPassword: "belajar", lmsPassword: "belajar", geminiApiKey: "" });
+            
+            useEffect(() => {
+                storeGet("settings", { studentPassword: "belajar", lmsPassword: "belajar", geminiApiKey: "" })
+                    .then(s => setLocalSet(s));
+            }, []);
 
-    const save = async () => {
-        // Membersihkan spasi sebelum disimpan
-        const cleanedSettings = {
-            ...localSet,
-            geminiApiKey: (localSet.geminiApiKey || "").trim()
-        };
-        await storeSet("settings", cleanedSettings);
-        setLocalSet(cleanedSettings);
-        showToast("Pengaturan sistem & Kunci API berhasil diperbarui.");
-    };
+            const save = async () => {
+                const cleanedSettings = {
+                    ...localSet,
+                    geminiApiKey: (localSet.geminiApiKey || "").trim()
+                };
+                await storeSet("settings", cleanedSettings);
+                setLocalSet(cleanedSettings);
+                showToast("Pengaturan sistem & Kunci API berhasil diperbarui.");
+            };
 
-    return (
-        <div className="p-6 md:p-10 max-w-4xl mx-auto pb-24">
-            <div className="mb-8">
-                <h2 className="font-display text-3xl font-bold" style={{ color: C.emerald }}>Pengaturan Sistem</h2>
-                <p className="text-sm font-medium mt-1" style={{ color: C.inkSoft }}>Kelola keamanan dan kecerdasan buatan portal.</p>
-            </div>
-
-            <Card className="mb-8 border-t-4" style={{ borderTopColor: C.emerald }}>
-                <h3 className="text-base font-bold mb-5 flex items-center gap-2" style={{ color: C.ink }}><Brain size={18} style={{ color: C.emerald }}/> Kunci Akses Google Gemini (AI)</h3>
-                <div>
-                    <label className="text-xs font-bold mb-2 block uppercase tracking-wide" style={{ color: C.inkSoft }}>API Key Gemini 1.5 Flash</label>
-                    <input 
-                        type="password"
-                        value={localSet.geminiApiKey} 
-                        onChange={e => setLocalSet({...localSet, geminiApiKey: e.target.value})} 
-                        placeholder="Paste API Key di sini (AIzaSy... atau AQ...)" 
-                        className="w-full border-2 rounded-xl px-4 py-3 text-sm font-medium outline-none transition-colors" 
-                        style={{ borderColor: C.border, backgroundColor: C.bg, color: C.ink }} 
-                    />
-                    <p className="text-xs mt-2" style={{ color: C.inkFaint }}>Kunci AI akan dibersihkan dari spasi secara otomatis saat Anda menyimpannya.</p>
-                </div>
-            </Card>
-
-            <Card className="mb-8 border-t-4" style={{ borderTopColor: C.emerald }}>
-                <h3 className="text-base font-bold mb-5 flex items-center gap-2" style={{ color: C.ink }}><Settings size={18} style={{ color: C.emerald }}/> Kunci Keamanan Akses</h3>
-                <div className="grid sm:grid-cols-2 gap-6">
-                    <div>
-                        <label className="text-xs font-bold mb-2 block uppercase tracking-wide" style={{ color: C.inkSoft }}>Sandi Login Portal Siswa</label>
-                        <input value={localSet.studentPassword} onChange={e=>setLocalSet({...localSet, studentPassword: e.target.value})} className="w-full border-2 rounded-xl px-4 py-3 text-sm font-medium outline-none" style={{ borderColor: C.border, backgroundColor: C.bg, color: C.ink }} />
+            return (
+                <div className="p-6 md:p-10 max-w-4xl mx-auto pb-24">
+                    <div className="mb-8">
+                        <h2 className="font-display text-3xl font-bold" style={{ color: C.emerald }}>Pengaturan Sistem</h2>
+                        <p className="text-sm font-medium mt-1" style={{ color: C.inkSoft }}>Kelola keamanan dan kecerdasan buatan portal.</p>
                     </div>
-                    <div>
-                        <label className="text-xs font-bold mb-2 block uppercase tracking-wide" style={{ color: C.inkSoft }}>Sandi Brankas Ujian (LMS)</label>
-                        <input value={localSet.lmsPassword} onChange={e=>setLocalSet({...localSet, lmsPassword: e.target.value})} className="w-full border-2 rounded-xl px-4 py-3 text-sm font-medium outline-none" style={{ borderColor: C.border, backgroundColor: C.bg, color: C.ink }} />
+
+                    <Card className="mb-8 border-t-4" style={{ borderTopColor: C.emerald }}>
+                        <h3 className="text-base font-bold mb-5 flex items-center gap-2" style={{ color: C.ink }}><Brain size={18} style={{ color: C.emerald }}/> Kunci Akses Google Gemini (AI)</h3>
+                        <div>
+                            <label className="text-xs font-bold mb-2 block uppercase tracking-wide" style={{ color: C.inkSoft }}>API Key Gemini 1.5 Flash</label>
+                            <input 
+                                type="password"
+                                value={localSet.geminiApiKey} 
+                                onChange={e => setLocalSet({...localSet, geminiApiKey: e.target.value})} 
+                                placeholder="Paste API Key di sini (AIzaSy... atau AQ...)" 
+                                className="w-full border-2 rounded-xl px-4 py-3 text-sm font-medium outline-none transition-colors" 
+                                style={{ borderColor: C.border, backgroundColor: C.bg, color: C.ink }} 
+                            />
+                            <p className="text-xs mt-2" style={{ color: C.inkFaint }}>Kunci AI akan dibersihkan dari spasi secara otomatis saat Anda menyimpannya.</p>
+                        </div>
+                    </Card>
+
+                    <Card className="mb-8 border-t-4" style={{ borderTopColor: C.emerald }}>
+                        <h3 className="text-base font-bold mb-5 flex items-center gap-2" style={{ color: C.ink }}><Settings size={18} style={{ color: C.emerald }}/> Kunci Keamanan Akses</h3>
+                        <div className="grid sm:grid-cols-2 gap-6">
+                            <div>
+                                <label className="text-xs font-bold mb-2 block uppercase tracking-wide" style={{ color: C.inkSoft }}>Sandi Login Portal Siswa</label>
+                                <input value={localSet.studentPassword} onChange={e=>setLocalSet({...localSet, studentPassword: e.target.value})} className="w-full border-2 rounded-xl px-4 py-3 text-sm font-medium outline-none" style={{ borderColor: C.border, backgroundColor: C.bg, color: C.ink }} />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold mb-2 block uppercase tracking-wide" style={{ color: C.inkSoft }}>Sandi Brankas Ujian (LMS)</label>
+                                <input value={localSet.lmsPassword} onChange={e=>setLocalSet({...localSet, lmsPassword: e.target.value})} className="w-full border-2 rounded-xl px-4 py-3 text-sm font-medium outline-none" style={{ borderColor: C.border, backgroundColor: C.bg, color: C.ink }} />
+                            </div>
+                        </div>
+                    </Card>
+
+                    <div className="flex justify-end">
+                        <button onClick={save} className="text-white font-bold py-3.5 px-8 rounded-xl text-sm w-full sm:w-auto shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2" style={{ background: C.emerald }}>
+                            Simpan Pembaruan Sistem
+                        </button>
                     </div>
                 </div>
-            </Card>
+            );
+        }
 
-            <div className="flex justify-end">
-                <button onClick={save} className="text-white font-bold py-3.5 px-8 rounded-xl text-sm w-full sm:w-auto shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2" style={{ background: C.emerald }}>
-                    Simpan Pembaruan Sistem
-                </button>
-            </div>
-        </div>
-    );
-}
+        // FUNGSI CHAT YANG SEBELUMNYA KEPALANYA TERHAPUS
+        function ChatMessageItem({ msg, onVote, onBookmark }) {
+            const [quranData, setQuranData] = useState(null);
+            const [quranLoading, setQuranLoading] = useState(false);
+
+            const fetchQuran = async () => {
+                if (quranData) { setQuranData(null); return; } // Toggle off
+                setQuranLoading(true);
+                try {
+                    const qLower = (msg.question || "").toLowerCase();
+                    let theme = "ilmu";
+                    if (qLower.includes("tumbuh") || qLower.includes("alam")) theme = "tumbuhan";
+                    else if (qLower.includes("hitung") || qLower.includes("pola")) theme = "menghitung";
+                    
+                    const searchRes = await fetch(`https://api.alquran.cloud/v1/search/${encodeURIComponent(theme)}/all/id.indonesian`);
+                    const searchData = await searchRes.json();
+                    const match = searchData?.data?.matches?.[0];
+
+                    if (match) {
+                        const detailRes = await fetch(`https://api.alquran.cloud/v1/ayah/${match.number}/editions/quran-uthmani,id.indonesian`);
+                        const detailData = await detailRes.json();
+                        setQuranData({
+                            surahName: match.surah.englishName, surahNumber: match.surah.number, ayahNumber: match.numberInSurah,
+                            arabic: detailData?.data?.[0]?.text || "", translation: detailData?.data?.[1]?.text || match.text,
+                        });
+                    } else {
+                        setQuranData({ error: "Tidak ada ayat khusus yang terkait secara langsung." });
+                    }
+                } catch {
+                    setQuranData({ error: "Gagal memuat API Al-Qur'an." });
+                } finally {
+                    setQuranLoading(false);
+                }
+            };
+
+            if (msg.role === "user") {
+                return (
+                    <div className="flex justify-end rise-in mb-4">
+                        <div className="max-w-[85%] rounded-2xl rounded-tr-sm px-4 py-3 text-sm text-white shadow-sm" style={{ background: C.emeraldSecondary }}>
+                            {msg.text}
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="flex justify-start rise-in mb-5">
+                    <div className="max-w-[92%] w-full rounded-2xl rounded-tl-sm p-4 border shadow-sm" style={{ background: C.surface, borderColor: C.border }}>
+                        <div className="text-sm font-semibold pb-2.5 border-b" style={{ color: C.ink, borderColor: C.borderSoft }}>{msg.data.shortAnswer}</div>
+                        {msg.data.explanation && <p className="text-sm mt-3 leading-relaxed" style={{ color: C.inkSoft }}>{msg.data.explanation}</p>}
+                        
+                        {msg.data.thinkPrompt && (
+                            <div className="mt-3.5 rounded-lg p-3.5 flex items-start gap-3 border" style={{ background: C.goldBg, borderColor: "#F2DFB3" }}>
+                                <Brain size={16} className="shrink-0 mt-0.5" style={{ color: C.goldDeep }} />
+                                <div>
+                                    <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: C.goldDeep }}>Pertanyaan Pemantik</p>
+                                    <p className="text-xs mt-0.5 font-medium leading-relaxed" style={{ color: "#563C0D" }}>{msg.data.thinkPrompt}</p>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {msg.data.sources?.length > 0 && (
+                            <div className="mt-4 rounded-lg overflow-hidden border" style={{ borderColor: C.borderSoft }}>
+                                <div className="px-3.5 py-2 flex justify-between bg-gray-50 border-b" style={{ borderColor: C.borderSoft }}>
+                                    <div className="flex items-center gap-2"><BookMarked size={13} style={{ color: C.emerald }}/><span className="text-[11px] font-bold uppercase" style={{ color: C.emerald }}>Verifikasi Rujukan</span></div>
+                                    <StrengthBadge level={msg.data.sourceStrength} />
+                                </div>
+                                <div className="p-3.5 space-y-2.5 bg-white">
+                                    {msg.data.sources.map((s, idx) => (
+                                        <div key={idx} className="flex gap-2.5 text-xs">
+                                            <span className="text-base leading-none">{s.icon}</span>
+                                            <div><p className="font-semibold text-gray-800">{s.label}</p><p className="text-[11px] text-gray-500">{s.detail}</p></div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex items-center gap-1 mt-4 pt-3 border-t" style={{ borderColor: C.borderSoft }}>
+                            <button onClick={() => onVote(msg.id, "up")} className="p-1.5 rounded-md hover:bg-gray-100 flex gap-1" style={{ color: msg.vote === "up" ? C.green : C.inkFaint }}><ThumbsUp size={14} /></button>
+                            <button onClick={() => onVote(msg.id, "down")} className="p-1.5 rounded-md hover:bg-gray-100 flex gap-1" style={{ color: msg.vote === "down" ? C.red : C.inkFaint }}><ThumbsDown size={14} /></button>
+                            <button onClick={() => onBookmark(msg)} className="p-1.5 rounded-md hover:bg-gray-100 ml-2" style={{ color: msg.bookmarked ? C.gold : C.inkFaint }}><Bookmark size={14} fill={msg.bookmarked ? C.gold : "none"} /></button>
+                            <button onClick={fetchQuran} className="p-1.5 rounded-md hover:bg-emerald-50 ml-2 flex items-center gap-1.5 text-xs font-semibold border transition-colors" style={{ borderColor: C.border, color: quranData ? C.emerald : C.inkSoft }}>
+                                <BookOpen size={14} /> Relevansi Ayat
+                            </button>
+                        </div>
+
+                        {quranLoading && <div className="mt-3 text-xs flex items-center gap-2 text-emerald-700"><Loader2 size={14} className="animate-spin"/> Menarik data API Al-Qur'an...</div>}
+                        {quranData && !quranData.error && (
+                            <div className="mt-3 p-4 rounded-xl border bg-white rise-in" style={{ borderColor: C.borderSoft }}>
+                                <span className="text-xs font-bold uppercase tracking-wider text-gold-700 block mb-2" style={{ color: C.goldDeep }}>QS. {quranData.surahName} : {quranData.ayahNumber}</span>
+                                <p className="font-arabic text-xl text-right leading-loose text-gray-800" dir="rtl">{quranData.arabic}</p>
+                                <p className="text-xs leading-relaxed italic border-l-2 pl-3 py-1 mt-3" style={{ borderColor: C.gold, color: C.inkSoft }}>"{quranData.translation}"</p>
+                                <div className="pt-2 mt-3 border-t flex justify-between items-center" style={{ borderColor: C.borderSoft }}>
+                                    <span className="text-[10px] text-gray-400">Teks Kemenag RI via alquran.cloud</span>
+                                    <a href={`https://quran.kemenag.go.id/surah/${quranData.surahNumber}`} target="_blank" rel="noreferrer" className="text-[11px] font-bold flex items-center gap-1 hover:underline" style={{ color: C.emeraldSecondary }}>Kaji Tafsir Kemenag <ExternalLink size={10} /></a>
+                                </div>
+                            </div>
+                        )}
+                        {quranData?.error && <div className="mt-3 text-xs text-red-500 bg-red-50 p-2 rounded">{quranData.error}</div>}
+                    </div>
+                </div>
+            );
+        }
 
             return (
                 <div className="flex justify-start rise-in mb-5">
