@@ -169,6 +169,7 @@
         // ============================================================================
         
         // --- SISTEM AI UTAMA ---
+        // --- SISTEM AI UTAMA (PIVOT KE GROQ / LLAMA 3) ---
         async function generateEducationalResponse({ question, mode, grade, subject, teacherDocs }) {
             const settings = await storeGet("sys-settings", { geminiApiKey: "" });
             const hasDoc = teacherDocs.length > 0;
@@ -178,11 +179,10 @@
                 await new Promise(resolve => setTimeout(resolve, 800));
                 return {
                     shortAnswer: `Sistem AI terbatas karena Guru belum memasukkan API Key.`,
-                    explanation: hasDoc ? `Dokumen terdeteksi: ${primaryDoc.title}. Namun AI gagal memprosesnya karena kunci akses belum ada.` : `Sistem tidak dapat menghasilkan analisis otomatis.`,
+                    explanation: `Sistem tidak dapat menghasilkan analisis otomatis.`,
                     thinkPrompt: `Silakan hubungi Guru Anda untuk mengaktifkan kecerdasan buatan.`,
                     sources: hasDoc ? [{ icon: "📘", label: primaryDoc.title, detail: `Bab: ${primaryDoc.chapter}` }] : [],
-                    sourceStrength: "red",
-                    note: "Kunci API Gemini Kosong"
+                    sourceStrength: "red"
                 };
             }
 
@@ -191,9 +191,8 @@
                 ? `Materi Referensi (WAJIB ACUAN): Judul: ${primaryDoc.title}, Bab: ${primaryDoc.chapter}\nIsi: ${primaryDoc.content}` 
                 : "Tidak ada rujukan guru. Gunakan kurikulum SD standar Indonesia.";
 
-            const prompt = `Kamu IQRA' AI untuk SD Kelas ${grade} mapel ${subject}.
+            const systemPrompt = `Kamu adalah IQRA' AI untuk SD Kelas ${grade} mapel ${subject}.
 Konteks: ${contextText}
-Tanya: "${question}"
 Mode Belajar: "${mode}"
 Aturan:
 - jelaskan: Jawaban langsung.
@@ -201,29 +200,36 @@ Aturan:
 - aha: Gunakan analogi unik / pemecahan masalah (HOTS).
 - buku: Jawab HANYA dari Materi Referensi. Jika tidak ada di referensi, tolak halus.
 
-Jawab HANYA dalam JSON valid tanpa block markdown:
-{"shortAnswer": "kesimpulan 1-2 kalimat", "explanation": "penjelasan detail", "thinkPrompt": "pertanyaan pancingan nalar (bisa null)", "sourceStrength": "green/yellow/orange/red"}`;
+WAJIB kembalikan JSON persis format ini:
+{"shortAnswer": "kesimpulan 1-2 kalimat", "explanation": "penjelasan detail", "thinkPrompt": "pertanyaan pancingan nalar atau null", "sourceStrength": "green/yellow/orange/red"}`;
 
             try {
-                // PERBAIKAN FINAL: MENGGUNAKAN gemini-1.5-flash-latest
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=${cleanKey}`, {
+                // MENEMBAK API GROQ CLOUD
+                const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3 } })
+                    headers: { 
+                        "Authorization": `Bearer ${cleanKey}`,
+                        "Content-Type": "application/json" 
+                    },
+                    body: JSON.stringify({ 
+                        model: "llama3-8b-8192", 
+                        messages: [
+                            { role: "system", content: systemPrompt },
+                            { role: "user", content: question }
+                        ],
+                        temperature: 0.3,
+                        response_format: { type: "json_object" }
+                    })
                 });
                 
                 if (!res.ok) {
-                    let errorDetails = `HTTP Error ${res.status}`;
-                    try {
-                        const errData = await res.json();
-                        errorDetails = errData.error?.message || errorDetails;
-                    } catch(e) {}
-                    throw new Error(errorDetails);
+                    let err = `HTTP ${res.status}`;
+                    try { const errData = await res.json(); err = errData.error?.message || err; } catch(e) {}
+                    throw new Error(err);
                 }
                 
                 const data = await res.json();
-                let rawText = data.candidates[0].content.parts[0].text;
-                rawText = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
+                let rawText = data.choices[0].message.content;
                 const parsed = JSON.parse(rawText);
 
                 return {
@@ -231,55 +237,53 @@ Jawab HANYA dalam JSON valid tanpa block markdown:
                     explanation: parsed.explanation || "",
                     thinkPrompt: parsed.thinkPrompt || null,
                     sources: hasDoc ? [{ icon: "📘", label: primaryDoc.title, detail: `Bab: ${primaryDoc.chapter}` }] : [],
-                    sourceStrength: parsed.sourceStrength || (hasDoc ? "green" : "yellow"),
-                    note: hasDoc ? null : "Berdasarkan AI umum."
+                    sourceStrength: parsed.sourceStrength || (hasDoc ? "green" : "yellow")
                 };
             } catch (error) {
                 return {
-                    shortAnswer: "Akses ditolak oleh server Google.",
-                    explanation: `ALASAN DARI GOOGLE: "${error.message}"`,
-                    thinkPrompt: "Tolong periksa menu Pengaturan Sistem. Pastikan Kunci API baru Anda dimasukkan tanpa ada spasi ekstra.",
-                    sources: [],
-                    sourceStrength: "red",
-                    note: "API Error Terdeteksi"
+                    shortAnswer: "Akses ditolak oleh server Groq.",
+                    explanation: `ALASAN SERVER: "${error.message}"`,
+                    thinkPrompt: "Periksa Pengaturan Sistem. Pastikan Kunci API Groq (gsk_...) Anda dimasukkan dengan benar.",
+                    sources: [], sourceStrength: "red"
                 };
             }
         }
 
         async function gradeEsaiAI(question, answer, reference, apiKey) {
             if (!apiKey || apiKey.trim() === "") {
-                return { 
-                    score: answer.length > 50 ? 95 : 65, 
-                    feedback: "[Mode Offline] API Key AI belum aktif, nilai digenerate acak berdasarkan panjang teks." 
-                };
+                return { score: answer.length > 50 ? 95 : 65, feedback: "[Mode Offline] Kunci AI belum aktif." };
             }
 
             const cleanKey = apiKey.trim();
-            const prompt = `Koreksi jawaban essay siswa SD.
+            const systemPrompt = `Koreksi jawaban essay siswa SD.
 Soal: "${question}"
 Kunci Jawaban Guru: "${reference}"
-Jawaban Siswa: "${answer}"
-Aturan: Berikan nilai objektif (0-100) dan masukan (feedback) 1-2 kalimat dengan bahasa yang menyemangati.
-Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
+
+WAJIB Jawab JSON: {"score": 85, "feedback": "masukan ramah"}`;
             
             try {
-                // PERBAIKAN FINAL: MENGGUNAKAN gemini-1.5-flash-latest
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=${cleanKey}`, {
+                const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST", 
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2 } })
+                    headers: { 
+                        "Authorization": `Bearer ${cleanKey}`,
+                        "Content-Type": "application/json" 
+                    },
+                    body: JSON.stringify({ 
+                        model: "llama3-8b-8192",
+                        messages: [
+                            { role: "system", content: systemPrompt },
+                            { role: "user", content: `Jawaban Siswa: "${answer}"` }
+                        ],
+                        temperature: 0.2,
+                        response_format: { type: "json_object" }
+                    })
                 });
 
-                if (!res.ok) {
-                    throw new Error(`HTTP Error ${res.status}`);
-                }
-
+                if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
                 const data = await res.json();
-                let rawText = data.candidates[0].content.parts[0].text;
-                rawText = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
-                return JSON.parse(rawText);
+                return JSON.parse(data.choices[0].message.content);
             } catch (e) {
-                return { score: 0, feedback: "Koreksi otomatis gagal terhubung ke AI. Coba lagi nanti." };
+                return { score: 0, feedback: "Koreksi gagal terhubung ke AI." };
             }
         }
 
